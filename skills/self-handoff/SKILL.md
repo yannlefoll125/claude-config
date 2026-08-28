@@ -19,7 +19,16 @@ Judge from context which mode was meant, and announce it in your first line ("Wr
 
 ## Create
 
-Write a handoff document summarising the current conversation so a fresh agent can continue the work. Save it to `SELF_HANDOFF.md` at the repo root, overwriting any previous handoff.
+**Step 1 — move durable knowledge to long-term docs first.** Go through what this session learned or decided and sort each item:
+
+- Belongs in long-term documentation → write it there now, before the handoff: project conventions and setup into `README.md` or `CLAUDE.md`, architecture decisions into `docs/adr/`, domain knowledge into `CONTEXT.md` or `docs/`, issue state into the issue tracker files. Anything a future session would need *regardless* of this specific task is durable, not session state.
+- Only matters for continuing this specific task → that goes in the handoff.
+
+**Step 2 — write the handoff, session-relevant content only.** The handoff carries what a fresh agent needs to continue *this* work: current task state, what's done and verified, what's next, open questions, dead ends already tried. It must not duplicate what step 1 just put into the docs — link to those files instead.
+
+If after step 1 nothing session-relevant remains (the work is finished, or everything durable is now in the docs), don't write a handoff: tell the user there's nothing to hand off and they can simply /clear. Delete a stale `SELF_HANDOFF.md` if one exists.
+
+Otherwise, save the handoff to `SELF_HANDOFF.md` at the repo root, overwriting any previous handoff.
 
 - Open the header with the date and the current session id (lift it from the scratchpad path).
 - Include a "suggested skills" section naming which skills the next agent should call the Skill tool for.
