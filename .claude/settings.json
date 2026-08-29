@@ -4,7 +4,7 @@
   },
   "statusLine": {
     "type": "command",
-    "command": "bash /workspace/scripts/statusline.sh"
+    "command": "bash .claude/scripts/statusline.sh"
   },
   "outputStyle": "ELI5",
   "enabledPlugins": {
