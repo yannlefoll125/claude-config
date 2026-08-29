@@ -1,11 +1,11 @@
 ---
 name: setup-claude-config
-description: Companion to install.sh — apply the base configuration to the current project, hands-off. Auto permission mode (when virtualised), notifications off, Fable model when available, statusline wired to the deployed script, then the standard install-mattpocock run. Safe to re-run; arguments tweak the setup ad hoc.
+description: Companion to claude-config-install — apply the base configuration to the current project, hands-off. Auto permission mode (when virtualised), notifications off, Fable model when available, statusline wired to the deployed script, then the standard install-mattpocock run. Safe to re-run; arguments tweak the setup ad hoc.
 argument-hint: "ad hoc overrides — e.g. 'keep notifications', 'skip mattpocock', 'model sonnet', 'auto mode anyway'"
 disable-model-invocation: true
 ---
 
-Apply the base configuration to the current project, end to end, without stopping. `install.sh` copied the files (this skill arrived through it); this skill wires them up. Report each step's outcome in one line — no questions, no waiting on the user.
+Apply the base configuration to the current project, end to end, without stopping. `claude-config-install` copied the files (this skill arrived through it); this skill wires them up. Report each step's outcome in one line — no questions, no waiting on the user.
 
 ## Arguments
 
@@ -44,7 +44,7 @@ An argument naming another model (e.g. "model sonnet") replaces the model id in 
 
 ## Step 4 — statusline
 
-The script was deployed by `install.sh` to `.claude/scripts/statusline.sh`. Verify it exists; if it is missing, skip with a one-line pointer to re-run `install.sh`. Otherwise set, using the **absolute** path of the project's copy (never a path into the Config Repo):
+The script was deployed by `claude-config-install` to `.claude/scripts/statusline.sh`. Verify it exists; if it is missing, skip with a one-line pointer to re-run `claude-config-install`. Otherwise set, using the **absolute** path of the project's copy (never a path into the Config Repo):
 
 ```json
 "statusLine": {
