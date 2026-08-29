@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Install claude-config into a target project's .claude directory.
+# Usage: ./claude-config-install [/path/to/target-project]  (default: current directory)
+set -euo pipefail
+
+if [ $# -gt 1 ]; then
+  echo "Usage: $0 [target-project-path]" >&2
+  exit 1
+fi
+
+# readlink -f: resolve the ~/.local/bin symlink back to the Config Repo.
+SRC="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+TARGET="${1:-.}"
+
+if [ ! -d "$TARGET" ]; then
+  echo "Error: target project '$TARGET' does not exist" >&2
+  exit 1
+fi
+
+# Resolve relative paths (e.g. ".") against the execution directory.
+TARGET="$(cd "$TARGET" && pwd)"
+
+DEST="$TARGET/.claude"
+mkdir -p "$DEST"
+
+for dir in skills output-styles scripts; do
+  cp -R "$SRC/$dir" "$DEST/"
+  echo "Copied $dir -> $DEST/$dir"
+done
+
+echo "Done."
