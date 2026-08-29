@@ -3,6 +3,8 @@
 ## Skill authoring in this repo
 
 - Skills are authored under `skills/` at the repo root, but Claude Code only loads them from `.claude/skills/`. Install by copying (`./claude-config-install <project>` at the repo root does this for any project, including this one); commit both copies.
+- Consuming flow: `make install` once symlinks `claude-config-install` into `~/.local/bin` (the script resolves the symlink back to this repo, so a plain copy would break it). Then in any project: `claude-config-install` (defaults to `.`) followed by `/setup-claude-config` in a session there. Base settings land in that project's `.claude/settings.local.json`, gitignored here.
+- Settings facts verified 2026-08-29: `preferredNotifChannel: "notifications_disabled"` is the real notifications-off value (the docs' settings reference doesn't list it); an unavailable `model` value falls back silently; the docs claim `permissions.defaultMode: "auto"` only works in `~/.claude/settings.json`, but this repo uses it project-level as its convention.
 - After editing an installed skill, `/reload-skills` may report "no changes" and the next invocation may still serve the stale cached body once — verify against the file on disk.
 - `claude plugin install/uninstall --scope project` reads and writes `enabledPlugins` in the project's `.claude/settings.json`; uninstall fails without the matching `--scope`. Plugin files land in `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/` immediately on install and are usable from there without any reload.
 - In this Sandbox, `/workspaces` is root-owned; only the home directory is writable for scratch projects.
