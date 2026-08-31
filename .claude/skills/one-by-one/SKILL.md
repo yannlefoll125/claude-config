@@ -12,7 +12,7 @@ A review, grilling, or analysis often ends in a list of points that each need th
 - No arguments: collect the open points from the current context — everything already raised that still needs a user decision.
 - Arguments given: treat them as a prompt. Do that work first; its resulting points become the list.
 
-Hold the points as an ordered working list. The list is mutable — see "Adapt" below.
+Hold the points as an ordered working list. The list is mutable — see "Adapt" below. Keep each point's numbering or label exactly as the source list had it ("3.", "P-7", "point B") and present it under that identifier; number newly added points by extending the same scheme.
 
 ## The loop — one point per turn
 
@@ -22,13 +22,12 @@ For the current point:
 2. Ask with the AskUserQuestion tool, one single-select question:
    - **First option: your recommendation**, labeled "(Recommended)", per the tool's convention.
    - Optionally one or two other predefined answers.
-   - **Last option: "Chat about this"** — the user wants to discuss before deciding.
-   - The tool adds its own "Other" free-form option automatically; that is the free-form answer path. Add no free-form option of your own.
+   - The tool adds its own "Other" free-form option automatically; that covers both free-form answers and "let's discuss this". Add no free-form or chat option of your own.
 
 ## Advancing — the hard rule
 
 - User picked a predefined answer → record it and present the next point immediately.
-- User picked "Chat about this" or typed a free-form "Other" answer → **stay on this point.** Respond, discuss, refine. Move to the next point ONLY when the user explicitly says so ("next", "move on", "that's settled") or picks a concrete answer. When the discussion feels settled, offer to advance (an AskUserQuestion with "Record X and go to next point (Recommended)" works well) — but the user makes that call, never you.
+- User typed a free-form "Other" answer (a custom answer, a question, or "let's discuss") → **stay on this point.** Respond, discuss, refine. Move to the next point ONLY when the user explicitly says so ("next", "move on", "that's settled") or picks a concrete answer. When the discussion feels settled, offer to advance (an AskUserQuestion with "Record X and go to next point (Recommended)" works well) — but the user makes that call, never you.
 
 ## Adapt
 
