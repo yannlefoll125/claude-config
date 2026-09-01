@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+# Push claude-config to every subscribed project.
+# Usage: claude-config-push
+set -euo pipefail
+
+# readlink -f: resolve the ~/.local/bin symlink back to the Config Repo.
+SELF_DIR="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+SUBS="${XDG_CONFIG_HOME:-$HOME/.config}/claude-config/subscribers"
+
+if [ ! -f "$SUBS" ]; then
+  echo "No subscribers file at $SUBS (run claude-config-install in a project first)" >&2
+  exit 1
+fi
+
+while IFS= read -r path; do
+  case "$path" in ''|'#'*) continue ;; esac
+  if [ ! -d "$path" ]; then
+    echo "Warning: skipping missing subscriber '$path'" >&2
+    continue
+  fi
+  echo "==> $path"
+  "$SELF_DIR/claude-config-install" "$path"
+done < "$SUBS"

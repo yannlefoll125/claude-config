@@ -21,11 +21,42 @@ fi
 TARGET="$(cd "$TARGET" && pwd)"
 
 DEST="$TARGET/.claude"
+MANIFEST="$DEST/.claude-config-manifest"
 mkdir -p "$DEST"
+
+old_manifest=""
+if [ -f "$MANIFEST" ]; then
+  old_manifest="$(sort "$MANIFEST")"
+fi
 
 for dir in skills output-styles scripts; do
   cp -R "$SRC/$dir" "$DEST/"
   echo "Copied $dir -> $DEST/$dir"
 done
+
+new_manifest="$( (cd "$SRC" && find skills output-styles scripts -type f) | sort )"
+
+# Only files recorded in the previous manifest are eligible for deletion,
+# so project-specific files inside the managed dirs are never touched.
+if [ -n "$old_manifest" ]; then
+  while IFS= read -r rel; do
+    [ -n "$rel" ] || continue
+    rm -f "$DEST/$rel"
+    echo "Removed stale $rel"
+  done < <(comm -23 <(printf '%s\n' "$old_manifest") <(printf '%s\n' "$new_manifest"))
+  find "$DEST/skills" "$DEST/output-styles" "$DEST/scripts" -depth -type d -empty -delete 2>/dev/null || true
+fi
+
+printf '%s\n' "$new_manifest" > "$MANIFEST"
+
+# Subscribe the target so claude-config-push reaches it.
+SUBS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/claude-config"
+SUBS="$SUBS_DIR/subscribers"
+mkdir -p "$SUBS_DIR"
+touch "$SUBS"
+if ! grep -Fxq "$TARGET" "$SUBS"; then
+  printf '%s\n' "$TARGET" >> "$SUBS"
+  echo "Subscribed $TARGET"
+fi
 
 echo "Done."
