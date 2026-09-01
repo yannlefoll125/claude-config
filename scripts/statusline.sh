@@ -19,12 +19,13 @@ else
 fi
 
 if git -C "$cwd" --no-optional-locks rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  project=$(git -C "$cwd" --no-optional-locks rev-parse --show-toplevel 2>/dev/null)
   branch=$(git -C "$cwd" --no-optional-locks branch --show-current 2>/dev/null)
   [ -z "$branch" ] && branch=$(git -C "$cwd" --no-optional-locks rev-parse --short HEAD 2>/dev/null)
   if [ -n "$(git -C "$cwd" --no-optional-locks status --porcelain 2>/dev/null)" ]; then
-    printf '\033[2m | \033[0m\033[35m%s\033[0m \033[2m\033[33mCHANGES\033[0m' "$branch"
+    printf '\033[2m | \033[0m%s \033[2m(\033[0m\033[35m%s\033[0m \033[2m\033[33mCHANGES\033[0m\033[2m)\033[0m' "$project" "$branch"
   else
-    printf '\033[2m | \033[0m\033[35m%s\033[0m \033[2m\033[32mCLEAN\033[0m' "$branch"
+    printf '\033[2m | \033[0m%s \033[2m(\033[0m\033[35m%s\033[0m \033[2m\033[32mCLEAN\033[0m\033[2m)\033[0m' "$project" "$branch"
   fi
 else
   printf '\033[2m | No git\033[0m'
