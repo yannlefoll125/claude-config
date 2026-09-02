@@ -1,6 +1,6 @@
 ---
 name: commit
-description: Create git commits — invoke for EVERY commit, however it comes up: the user asks in any wording ("commit this", "make a commit"), the user approves a commit you offered, or committing is a step in your own work (then pass the intended files/scope as args). Bundles changes into logical commits with short "<topic>: <message>" messages; never pushes.
+description: 'Create git commits — invoke for EVERY commit, however it comes up: the user asks in any wording ("commit this", "make a commit"), the user approves a commit you offered, or committing is a step in your own work (then pass the intended files/scope as args). Bundles changes into logical commits with short "<topic>: <message>" messages; never pushes.'
 argument-hint: 'free-form instructions — omit to commit all current changes'
 ---
 
