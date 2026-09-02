@@ -5,6 +5,9 @@ model=$(echo "$input" | jq -r '.model.display_name')
 tokens=$(echo "$input" | jq -r '.context_window.total_input_tokens // 0')
 used_pct=$(echo "$input" | jq -r '.context_window.used_percentage // empty')
 cwd=$(echo "$input" | jq -r '.workspace.current_dir // .cwd // empty')
+style=$(echo "$input" | jq -r '.output_style.name // empty')
+
+[ -n "$style" ] && [ "$style" != "default" ] && model="$model ($style)"
 
 if [ "$tokens" -ge 1000 ] 2>/dev/null; then
   tokens_fmt=$(awk -v t="$tokens" 'BEGIN{printf "%.1fk", t/1000}')
