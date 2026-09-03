@@ -1,8 +1,7 @@
 ---
 name: one-by-one
-description: Walk the user through open points one at a time with a multiple-choice prompt per point, instead of dumping the whole list. With arguments, answer that prompt first, then run its points one by one.
+description: Walk the user through open points one at a time with a multiple-choice prompt per point, instead of dumping the whole list. Use whenever a review, grilling, or analysis leaves several points that each need a user decision. With arguments, answer that prompt first, then run its points one by one.
 argument-hint: "optional prompt to answer first — omit to use the points already in context"
-disable-model-invocation: true
 ---
 
 A review, grilling, or analysis often ends in a list of points that each need the user's input. A dumped list is impractical to work through. This skill replaces the dump: present each point alone, collect the decision, then move on.
