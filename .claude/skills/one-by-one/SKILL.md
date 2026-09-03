@@ -27,7 +27,7 @@ For the current point:
 ## Advancing — the hard rule
 
 - User picked a predefined answer → record it and present the next point immediately.
-- User typed a free-form "Other" answer (a custom answer, a question, or "let's discuss") → **stay on this point.** Respond, discuss, refine. Move to the next point ONLY when the user explicitly says so ("next", "move on", "that's settled") or picks a concrete answer. When the discussion feels settled, offer to advance (an AskUserQuestion with "Record X and go to next point (Recommended)" works well) — but the user makes that call, never you.
+- User typed a free-form "Other" answer (a custom answer, a question, or "let's discuss") → the loop is suspended and you are in **chat mode** on this point. Discuss in plain prose, and end every chat-mode reply as prose — no AskUserQuestion, no options, no "ready to move on?". The user ends chat mode, never you: the loop resumes only on an explicit user signal — "next", "move on", "that's settled", or a concrete answer stated in the chat. Your own sense that the discussion is settled is not a signal; without one, the next turn is still chat. On the signal, record the decision and present the next point.
 
 ## Adapt
 
