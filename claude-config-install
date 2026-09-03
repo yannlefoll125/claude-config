@@ -26,7 +26,14 @@ mkdir -p "$DEST"
 
 old_manifest=""
 if [ -f "$MANIFEST" ]; then
-  old_manifest="$(sort "$MANIFEST")"
+  # Skip comment lines (the version header) — only file paths are diffed.
+  old_manifest="$(grep -v '^#' "$MANIFEST" | sort || true)"
+fi
+
+# Version stamp: short commit hash of the Config Repo, -SNAPSHOT if dirty.
+version="$(git -C "$SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+if [ -n "$(git -C "$SRC" status --porcelain 2>/dev/null)" ]; then
+  version="$version-SNAPSHOT"
 fi
 
 for dir in skills output-styles scripts; do
@@ -47,7 +54,10 @@ if [ -n "$old_manifest" ]; then
   find "$DEST/skills" "$DEST/output-styles" "$DEST/scripts" -depth -type d -empty -delete 2>/dev/null || true
 fi
 
-printf '%s\n' "$new_manifest" > "$MANIFEST"
+{
+  printf '# claude-config %s\n' "$version"
+  printf '%s\n' "$new_manifest"
+} > "$MANIFEST"
 
 # Subscribe the target so claude-config-push reaches it.
 SUBS_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/claude-config"
