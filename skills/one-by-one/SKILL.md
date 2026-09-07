@@ -17,7 +17,7 @@ Hold the points as an ordered working list. The list is mutable — see "Adapt" 
 
 For the current point:
 
-1. Write the point, plus just enough explanation to decide: what it is, why it matters, the trade-off if there is one.
+1. Write the point, plus just enough explanation to decide: what it is, why it matters, the trade-off if there is one. Start with a progress marker so the user can orient themselves — e.g. `**3/~7**` (points answered-so-far+this-one / estimated total). The total is an estimate, not a promise: the list is mutable (see "Adapt"), so restate the current total each time and let it drift as points are added or dropped.
 2. Ask with the AskUserQuestion tool, one single-select question:
    - **First option: your recommendation**, labeled "(Recommended)", per the tool's convention.
    - Optionally one or two other predefined answers.
