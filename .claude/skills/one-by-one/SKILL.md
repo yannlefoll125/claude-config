@@ -20,6 +20,7 @@ For the current point:
 1. Open with the progress marker: `**3/~7**` — points answered-so-far+this-one / estimated total. Every turn that asks the question carries the marker: the first presentation, a re-ask after "Explain", and the resume after chat mode. The total is an estimate, not a promise: the list is mutable (see "Adapt"), so recount it each time and let it drift as points are added or dropped.
 2. Write the point under its source identifier ("3.", "P-7"), plus just enough explanation to decide: what it is, why it matters, the trade-off if there is one.
 3. Ask with the AskUserQuestion tool, one single-select question:
+   - **The question text starts with the marker** ("3/~7 — …"): the tool's dialog takes focus and the prose above it scrolls away, so the marker must sit where the decision is made. Keep the short `header` for the topic.
    - **First option: your recommendation**, labeled "(Recommended)", per the tool's convention.
    - Optionally one or two other predefined answers.
    - **Last option: "Explain"** — always present, description like "explain this point in more depth first".
