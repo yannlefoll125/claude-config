@@ -25,7 +25,7 @@ Project scope is required: the plugin entry must land in the project's `.claude/
 
 Newly installed plugin skills aren't registered with the running session, and the reload commands (`/reload-plugins`, `/reload-skills`) are user-typed only — do NOT wait for them. The plugin's files are already on disk; use them directly.
 
-Find the cache directory: `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/<version>/` — take the highest version directory if there are several. The setup skill lives at `skills/engineering/setup-matt-pocock-skills/` inside it, alongside its seed templates (`issue-tracker-local.md`, `triage-labels.md`, `domain.md`, …).
+Find the cache directory: `~/.claude/plugins/cache/claude-plugins-official/mattpocock-skills/<version>/` — if there are several, take the highest by semantic-version order (numeric per segment, `sort -V`: 1.10.0 > 1.9.0). The setup skill lives at `skills/engineering/setup-matt-pocock-skills/` inside it, alongside its seed templates (`issue-tracker-local.md`, `triage-labels.md`, `domain.md`, …).
 
 ## Step 3 — run the setup skill from disk
 
