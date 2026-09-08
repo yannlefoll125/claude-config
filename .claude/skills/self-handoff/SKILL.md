@@ -35,6 +35,7 @@ Otherwise, save the handoff to `SELF_HANDOFF.md` at the repo root, overwriting a
 - Reference content already captured in other artifacts (specs, plans, ADRs, issues, commits, diffs) by path or URL instead of restating it.
 - Redact secrets and PII: reference where a credential lives instead of inlining it.
 - If the user passed arguments, treat them as a description of what the next session will focus on and tailor the doc accordingly.
+- Re-scan the draft before saving: any item a future session would need regardless of this task is a sorting error — move it to the docs (step 1) instead.
 
 In a git repo, keep the file out of version control locally: if `git check-ignore -q SELF_HANDOFF.md` fails, append `SELF_HANDOFF.md` to `.git/info/exclude`. `.gitignore` belongs to the user — leave it untouched.
 
