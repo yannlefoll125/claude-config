@@ -11,14 +11,14 @@ A review, grilling, or analysis often ends in a list of points that each need th
 - No arguments: collect the open points from the current context — everything already raised that still needs a user decision.
 - Arguments given: treat them as a prompt. Do that work first; its resulting points become the list.
 
-Hold the points as an ordered working list. The list is mutable — see "Adapt" below. Keep each point's numbering or label exactly as the source list had it ("3.", "P-7", "point B") and present it under that identifier; number newly added points by extending the same scheme.
+Hold the points as an ordered working list. The list is mutable — see "Adapt" below. Keep each point's numbering or label exactly as the source list had it ("3.", "P-7", "point B"); number newly added points by extending the same scheme.
 
 ## The loop — one point per turn
 
 For the current point:
 
 1. Open with the progress marker: `**3/~7**` — points answered-so-far+this-one / estimated total. Every turn that asks the question carries the marker: the first presentation, a re-ask after "Explain", and the resume after chat mode. The total is an estimate, not a promise: the list is mutable (see "Adapt"), so recount it each time and let it drift as points are added or dropped.
-2. Write the point, plus just enough explanation to decide: what it is, why it matters, the trade-off if there is one.
+2. Write the point under its source identifier ("3.", "P-7"), plus just enough explanation to decide: what it is, why it matters, the trade-off if there is one.
 3. Ask with the AskUserQuestion tool, one single-select question:
    - **First option: your recommendation**, labeled "(Recommended)", per the tool's convention.
    - Optionally one or two other predefined answers.
@@ -27,7 +27,7 @@ For the current point:
 
 ## Advancing — the hard rule
 
-- User picked a predefined answer → record it and present the next point immediately.
+- User picked a predefined answer → record it, reconsider the list (see "Adapt"), and present the next point immediately.
 - User picked "Explain" → not a decision. Give a fuller explanation of the point — background, implications, the trade-offs behind each option — then re-ask the same question with the same options. The loop stays active; this is not chat mode.
 - User typed a free-form "Other" answer (a custom answer, a question, or "let's discuss") → the loop is suspended and you are in **chat mode** on this point. Discuss in plain prose, and end every chat-mode reply as prose — no AskUserQuestion, no options, no "ready to move on?". The user ends chat mode, never you: the loop resumes only on an explicit user signal — "next", "move on", "that's settled", or a concrete answer stated in the chat. Your own sense that the discussion is settled is not a signal; without one, the next turn is still chat. On the signal, record the decision and present the next point.
 
