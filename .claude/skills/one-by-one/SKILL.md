@@ -20,7 +20,7 @@ For the current point:
 1. Open with the progress marker: `**3/~7**` — points answered-so-far+this-one / estimated total. Every turn that asks the question carries the marker: the first presentation, a re-ask after "Explain", and the resume after chat mode. The total is an estimate, not a promise: the list is mutable (see "Adapt"), so recount it each time and let it drift as points are added or dropped.
 2. Write the point under its source identifier ("3.", "P-7"), plus just enough explanation to decide: what it is, why it matters, the trade-off if there is one.
 3. Ask with the AskUserQuestion tool, one single-select question:
-   - **The question text starts with the marker** ("3/~7 — …"): the tool's dialog takes focus and the prose above it scrolls away, so the marker must sit where the decision is made. Keep the short `header` for the topic.
+   - **The question text carries the decision**: it starts with the marker ("3/~7 — …") and compactly restates what is being decided; the option descriptions carry the trade-offs. The UI collapses prose that precedes a tool call into a one-line summary, so nothing the user needs in order to decide may live only in step 2's write-up. Keep the short `header` for the topic.
    - **First option: your recommendation**, labeled "(Recommended)", per the tool's convention.
    - Optionally one or two other predefined answers.
    - **Last option: "Explain"** — always present, description like "explain this point in more depth first".
@@ -29,7 +29,7 @@ For the current point:
 ## Advancing — the hard rule
 
 - User picked a predefined answer → record it, reconsider the list (see "Adapt"), and present the next point immediately.
-- User picked "Explain" → not a decision. Give a fuller explanation of the point — background, implications, the trade-offs behind each option — then re-ask the same question with the same options. The loop stays active; this is not chat mode.
+- User picked "Explain" → not a decision. Give a fuller explanation of the point — background, implications, the trade-offs behind each option — as the entire turn, ending in prose with the options restated in one line. No AskUserQuestion in this turn: the UI's prose-collapse rule above would reduce the explanation to a summary. On the user's next message: an answer (free text counts) → record it and advance; a further question → explain again the same way; anything else → re-ask the same question with the same options, marker carried. The loop stays active; this is not chat mode.
 - User typed a free-form "Other" answer (a custom answer, a question, or "let's discuss") → the loop is suspended and you are in **chat mode** on this point. Discuss in plain prose, and end every chat-mode reply as prose — no AskUserQuestion, no options, no "ready to move on?". The user ends chat mode, never you: the loop resumes only on an explicit user signal — "next", "move on", "that's settled", or a concrete answer stated in the chat. Your own sense that the discussion is settled is not a signal; without one, the next turn is still chat. On the signal, record the decision and present the next point.
 
 ## Adapt
