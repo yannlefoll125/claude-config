@@ -60,12 +60,3 @@ Invoke the `install-mattpocock` skill (deployed alongside this one), passing thr
 ## Wrap up
 
 Finish with a one-line-per-step checklist: permission mode (set / skipped + why), notifications, model (set / unavailable), statusline, mattpocock. Remind the user that settings changes are picked up by a new session — `/reload-skills` does not apply them.
-
-## Key table
-
-| Setting | Key in `.claude/settings.local.json` | Value |
-| --- | --- | --- |
-| Permission mode | `permissions.defaultMode` | `"auto"` |
-| Notifications | `preferredNotifChannel` | `"notifications_disabled"` |
-| Model | `model` | `"claude-fable-5"` |
-| Statusline | `statusLine` | `{"type": "command", "command": "bash <abs path>/.claude/scripts/statusline.sh"}` |
