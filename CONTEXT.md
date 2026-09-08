@@ -1,7 +1,7 @@
 # Claude Config
 
-A public repository holding one person's Claude Code preferences, plus the means to bring
-a fresh Sandbox up to that configured state.
+A public repository holding one person's Claude Code preferences, plus the machinery that
+installs them into any project and keeps those copies current.
 
 ## Language
 
@@ -21,55 +21,70 @@ This repository — the single source of the user's Claude Code preferences, and
 of the machinery that installs them.
 _Avoid_: dotfiles, config directory, collection
 
-**Config Plugin**:
-The Claude Code plugin published from the Payload. It is what a Sandbox installs, and it
-carries the `/setup` skill along with every Carried Artifact.
-_Avoid_: entry point plugin, bootstrapper, installer
-
 **Payload**:
-`dist/` — everything that ships, and nothing else. Hand-authored and committed, despite
-the name. It is also the Config Plugin's root. Anything outside it is tooling or
-documentation and never reaches a Sandbox.
-_Avoid_: bundle, package, build output
+The root directories that ship — `skills/`, `output-styles/`, `scripts/` — everything an
+Install copies, and nothing else. Hand-authored and committed. Anything outside it is
+tooling or documentation and never reaches a Target.
+_Avoid_: bundle, package, dist, build output
 
 **Artifact**:
-A single preference living in the Payload. Every Artifact is either Carried or Deployed;
-there is no third kind.
+A single preference living in the Payload — a skill, a script, an output style. Every
+Artifact reaches a Target by being copied, never by being loaded in place, and must work
+identically from the Host and from a Sandbox.
 _Avoid_: config file, asset, resource
 
-**Carried Artifact**:
-An Artifact the plugin mechanism loads in place, with no copying — skills, hooks, agents,
-output styles. It updates when the Config Plugin updates.
-_Avoid_: bundled artifact, native artifact
-
-**Deployed Artifact**:
-An Artifact no plugin can express, so `/setup` must copy it into a Target — the statusline
-script, settings keys, and the instructions file. It does not update when the Config
-Plugin updates, which is why Staleness exists.
-_Avoid_: copied artifact, installed artifact
-
 **Target**:
-The project directory `/setup` writes Deployed Artifacts into. Always the project, never
-the user's home directory.
+The project directory an Install writes into. Always the project's `.claude/`, never the
+user's home directory. The Config Repo is itself a Target of its own Payload.
 _Avoid_: destination, install dir
 
-**Deploy**:
-Copying Deployed Artifacts into a Target, rewriting any paths so they point at the copies
-rather than at the plugin, and excluding every written path from the Target's git.
-_Avoid_: install, sync, apply, link
+**Install**:
+Copying the Payload into a Target, recording what shipped in the Manifest, and subscribing
+the Target — `claude-config-install`.
+_Avoid_: deploy, sync, apply, link
 
-**Bootstrap**:
-Taking a fresh Sandbox from zero to the configured state: add the marketplace, install the
-Config Plugin, run `/setup`. Needs no credential.
-_Avoid_: install, provision, setup
+**Manifest**:
+The record an Install leaves in the Target: a version stamp plus the list of files that
+shipped. Only files the previous Manifest lists are ever deleted, which is what keeps the
+Target's own files in the managed directories safe.
+_Avoid_: lockfile, inventory, receipt
+
+**Subscriber**:
+A Target remembered at Install time, per environment, so that a later Push reaches it. A
+Subscriber whose path has vanished is skipped with a warning, not unsubscribed.
+_Avoid_: consumer, registered project
+
+**Push**:
+Re-running Install into every Subscriber at once. It writes into projects beyond the one
+being worked on, so it is always the user's own step, never an agent's.
+_Avoid_: publish, broadcast, deploy-all
+
+**Setup**:
+The in-session step after an Install — `/setup-claude-config` — that wires the copies up:
+base settings written into the Target's `.claude/settings.local.json`. Safe to re-run.
+_Avoid_: configure, init, bootstrap
+
+**Consuming**:
+Using the preferences in a project: Install, then Setup. Needs no credential and no write
+access to the Config Repo. Its counterpart is Authoring.
+_Avoid_: onboarding, adopting
 
 **Authoring**:
-Changing preferences, which happens in the Config Repo and is published by pushing from
-the Host. Its counterpart is Consuming — using preferences in any other project, which
-needs no credential and no write access.
+Changing preferences, which happens against the Payload in the Config Repo — the Config
+Repo's own installed copies are synced in the same commit. Reaching every other Target is
+a Push.
 _Avoid_: editing config, updating config
 
 **Staleness**:
-The state of a Target whose Deployed Artifacts are older than the installed Config Plugin.
-It is invisible without help, because updating the plugin does not touch them.
+The state of a Target whose installed copies are older than the Config Repo's Payload.
+Nothing in the Target detects it; only the Manifest's version stamp betrays it, and only
+the next Install or Push cures it.
 _Avoid_: drift, out of date, unsynced
+
+**Config Plugin**:
+A prospective future distribution vector, not part of the current design: publishing the
+Payload as a Claude Code plugin, so Artifacts load in place and update with the plugin
+instead of being copied and going stale. Earlier ADRs explored this shape; the terms they
+use (Carried and Deployed Artifacts, Deploy, Bootstrap) belong to that design and are not
+current vocabulary.
+_Avoid_: entry point plugin, bootstrapper, installer
