@@ -26,7 +26,7 @@ fi
 
 hooks_dir="$(git rev-parse --git-path hooks)"
 mkdir -p "$hooks_dir"
-hooks_dir="$(cd "$hooks_dir" && pwd)"
+hooks_dir="$(cd "$hooks_dir" && pwd -P)"
 dest="$hooks_dir/$name"
 
 if [ -e "$dest" ] && [ "$(readlink -f "$dest")" != "$hook" ]; then
@@ -34,5 +34,16 @@ if [ -e "$dest" ] && [ "$(readlink -f "$dest")" != "$hook" ]; then
   exit 1
 fi
 
-ln -sf "$hook" "$dest"
+# Link relatively so the hook resolves both on the host and inside a container
+# that mounts the repo at a different absolute path.
+relpath() { # relpath <from-dir> <to-path>
+  local from="$1" to="$2" up=""
+  while [ "${to#"$from"/}" = "$to" ] && [ "$from" != / ]; do
+    from="$(dirname "$from")"
+    up="../$up"
+  done
+  if [ "$from" = / ]; then printf '%s\n' "$to"; else printf '%s%s\n' "$up" "${to#"$from"/}"; fi
+}
+
+ln -sf "$(relpath "$hooks_dir" "$hook")" "$dest"
 echo "Enabled $name hook"
