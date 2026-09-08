@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# commit-msg hook: quietly strip Co-Authored-By trailers from the message.
+# Shipped to projects as .claude/scripts/git-hooks/commit-msg; opt in per
+# project by running the sibling `enable` script (symlinks it into .git/hooks).
+set -euo pipefail
+
+msg_file="$1"
+
+# grep -v exits 1 when it filters out every line (empty message stays valid).
+tmp="$(mktemp)"
+grep -iv '^co-authored-by:' "$msg_file" > "$tmp" || true
+mv "$tmp" "$msg_file"

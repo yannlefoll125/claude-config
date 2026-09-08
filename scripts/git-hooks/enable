@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Opt the current project into one shipped git hook by symlinking it into the
+# repo's .git/hooks. Run from anywhere inside the target repo:
+#   .claude/scripts/git-hooks/enable <hook-name>     e.g. enable commit-msg
+set -euo pipefail
+
+here="$(cd "$(dirname "$(readlink -f "$0")")" && pwd)"
+
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 <hook-name>" >&2
+  echo "Available hooks:" >&2
+  for f in "$here"/*; do
+    name="$(basename "$f")"
+    [ "$name" = enable ] && continue
+    echo "  $name" >&2
+  done
+  exit 1
+fi
+
+name="$1"
+hook="$here/$name"
+if [ ! -f "$hook" ] || [ "$name" = enable ]; then
+  echo "Error: unknown hook '$name' (see: $0 with no arguments)" >&2
+  exit 1
+fi
+
+hooks_dir="$(git rev-parse --git-path hooks)"
+mkdir -p "$hooks_dir"
+hooks_dir="$(cd "$hooks_dir" && pwd)"
+dest="$hooks_dir/$name"
+
+if [ -e "$dest" ] && [ "$(readlink -f "$dest")" != "$hook" ]; then
+  echo "Error: $dest already exists; move it aside or delete it first" >&2
+  exit 1
+fi
+
+ln -sf "$hook" "$dest"
+echo "Enabled $name hook"
