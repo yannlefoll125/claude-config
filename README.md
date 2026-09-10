@@ -78,9 +78,9 @@ Nothing phones home and there is no registry: the subscriber list, manifest, and
 
 ## Feedback
 
-This is a non-collaborative repo by design: it tracks one person's preferences, so pull requests won't be merged, and there is no support — if something doesn't work in your fork, the fix is yours to make.
+This is a non-collaborative repo by design: it tracks one person's preferences, so there are no pull requests and no support — in your fork, you're the maintainer, and everything here is yours to use without owing anything back.
 
-Ideas are a different matter. If you've forked this and found a better shape for some part of it, or you see a flaw in the design, I'd like to hear about it — open an issue. Observations and ideas, not questions: an issue is welcome when reading it makes the design better, and "how do I…" issues will be closed without reply.
+Issues stay open for one thing: the design itself. If you spot a flaw, or your fork found a better shape for some part, an issue is a way to send that upstream — whatever it improves lands back here in public, where every fork (yours included) can pull from it. "How do I…" questions don't have that effect, so they'll be closed without reply.
 
 ## License
 
