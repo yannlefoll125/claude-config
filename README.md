@@ -76,6 +76,12 @@ Nothing phones home and there is no registry: the subscriber list, manifest, and
 - `CONTEXT.md` — the domain vocabulary (payload, target, manifest, subscriber, …) used consistently across docs and skills.
 - `docs/adr/` — architecture decision records, including why artifacts ship as copied instructions, why the sandbox holds no credentials, and a prospective future shape where the payload becomes a Claude Code plugin.
 
+## Feedback
+
+This is a non-collaborative repo by design: it tracks one person's preferences, so pull requests won't be merged, and there is no support — if something doesn't work in your fork, the fix is yours to make.
+
+Ideas are a different matter. If you've forked this and found a better shape for some part of it, or you see a flaw in the design, I'd like to hear about it — open an issue. Observations and ideas, not questions: an issue is welcome when reading it makes the design better, and "how do I…" issues will be closed without reply.
+
 ## License
 
 [MIT](LICENSE) — fork and modify without limitation.
