@@ -4,6 +4,16 @@ One person's opinionated [Claude Code](https://claude.com/claude-code) configura
 
 It is published read-only: fork it, gut it, replace the opinions with your own. The machinery is the reusable part; the preferences are just mine.
 
+## Design philosophy
+
+This is a personal-use config, and its scope is deliberately narrow rather than portable:
+
+- **Claude Code only** — no attempt to serve other agents or editors.
+- **Linux** — the scripts and tooling assume a Linux host; nothing is tested elsewhere.
+- **Sandboxed by default** — designed around running Claude Code inside a libvirt VM: the sandbox holds no credentials, pushing happens only from the host, and setup enables auto permission mode only when it detects virtualisation.
+
+"Designed around" is not "limited to": every artifact must work identically from the host and from a sandbox (see `docs/adr/`), so nothing breaks if you run unsandboxed — you just lose the safety rationale behind some of the defaults.
+
 ## What's inside
 
 The **payload** — the three directories an install copies into a project's `.claude/`:
