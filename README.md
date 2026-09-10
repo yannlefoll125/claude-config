@@ -11,6 +11,7 @@ This is a personal-use config, and its scope is deliberately narrow rather than 
 - **Claude Code only** — no attempt to serve other agents or editors.
 - **Linux** — the scripts and tooling assume a Linux host; nothing is tested elsewhere.
 - **Sandboxed by default** — designed around running Claude Code inside a libvirt VM: the sandbox holds no credentials, pushing happens only from the host, and setup enables auto permission mode only when it detects virtualisation.
+- **Relative paths, never absolute** — a consequence of the sandbox assumption that matters if you fork this and work with an agent: the same repo is visible from the host and from the sandbox at *different* absolute paths, so everything persisted (symlinks, settings, references inside artifacts) is expressed relative to the repo or the target project. An agent that writes an absolute path into a committed file produces something that dangles in the other environment (see ADR 0009).
 
 "Designed around" is not "limited to": every artifact must work identically from the host and from a sandbox (see `docs/adr/`), so nothing breaks if you run unsandboxed — you just lose the safety rationale behind some of the defaults.
 
