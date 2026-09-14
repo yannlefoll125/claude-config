@@ -33,3 +33,40 @@ if git -C "$cwd" --no-optional-locks rev-parse --is-inside-work-tree >/dev/null 
 else
   printf '\033[2m | No git\033[0m'
 fi
+
+acct=$(jq -r '.oauthAccount | [.emailAddress // "", .organizationType // "", .userRateLimitTier // ""] | @tsv' "$HOME/.claude.json" 2>/dev/null)
+IFS=$'\t' read -r email org_type user_tier <<<"$acct"
+
+# Env-based auth overrides the oauth subscription as the active vector.
+if [ -n "${CLAUDE_CODE_USE_BEDROCK:-}" ]; then
+  vector="Bedrock"
+elif [ -n "${CLAUDE_CODE_USE_VERTEX:-}" ]; then
+  vector="Vertex"
+elif [ -n "${ANTHROPIC_AUTH_TOKEN:-}" ]; then
+  vector="auth token"
+elif [ -n "${ANTHROPIC_API_KEY:-}" ]; then
+  vector="API key …${ANTHROPIC_API_KEY: -4}"
+elif [ -n "$email" ]; then
+  case "$user_tier" in
+    *max_5x*) tier="Max 5x" price='$100/mo' ;;
+    *max_20x*) tier="Max 20x" price='$200/mo' ;;
+    *claude_pro*) tier="Pro" price="" ;;
+    *) tier="" price="" ;;
+  esac
+  # Seat pricing in team/enterprise orgs differs from individual plans,
+  # and enterprise contracts aren't in ~/.claude.json — tier label only.
+  case "$org_type" in
+    claude_team) vector="Team${tier:+ $tier}" ;;
+    claude_enterprise) vector="Enterprise${tier:+ $tier}" ;;
+    *) vector="${tier:-Subscription}${price:+ $price}" ;;
+  esac
+else
+  vector=""
+fi
+
+if [ -n "$email" ]; then
+  login="$email${vector:+ ($vector)}"
+else
+  login="$vector"
+fi
+[ -n "$login" ] && printf '\033[2m | %s\033[0m' "$login"
