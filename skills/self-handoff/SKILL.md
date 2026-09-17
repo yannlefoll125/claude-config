@@ -41,10 +41,10 @@ In a git repo, keep the file out of version control locally: if `git check-ignor
 
 ## Continue
 
-Read `SELF_HANDOFF.md` and orient before working:
+Read `SELF_HANDOFF.md` and orient — do **not** start working. Continuing means presenting where the work left off; the user decides what happens next.
 
-1. Give a 2–3 line orientation: where the work stands and what you will do first.
-2. Sanity-check freshness — compare the handoff's date and referenced commits against `git log`. Flag discrepancies in the orientation and proceed anyway: flag, never block.
-3. Follow the handoff, honoring any first action it names (which may be to ask the user something) and any steering instructions passed with the invocation.
+1. Give a 2–3 line orientation: where the work stands — what's done, what's in flight.
+2. Sanity-check freshness — compare the handoff's date and referenced commits against `git log`. Flag discrepancies in the orientation: flag, never block.
+3. Lay out the possible next steps (from the handoff's "what's next", open questions, and any steering instructions passed with the invocation), then stop and let the user pick. Don't take any of them — not even the handoff's named first action — until the user says so.
 
 Leave the file in place; the next create overwrites it.
