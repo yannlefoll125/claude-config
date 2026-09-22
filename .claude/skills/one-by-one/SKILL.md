@@ -42,4 +42,10 @@ Answers change the landscape. After each recorded decision, reconsider the list:
 
 ## Finish
 
-All points resolved → post a recap: each point with its recorded decision, one line each. Then carry out whatever work the decisions unblock, or state what happens next.
+All points resolved → post a recap: each point with its recorded decision, one line each. Then ask one final **checkpoint** question. It follows the loop's question conventions — recommendation first, "Explain" last, the native "Other" is chat mode — and the loop's rules for "Explain" and chat mode apply unchanged. Its three fixed options:
+
+- **"Continue now" (Recommended)** → carry out the work the decisions unblock.
+- **"Handoff & clear"** → persist the decisions, prompt the user to run `/self-handoff` and then `/clear`, and end the turn. `/self-handoff` is the user's step; your part ends at the prompt.
+- **"Just stop"** → persist the decisions and end the turn.
+
+**Persist the decisions**: the recap lives only in chat, which `/clear` erases. Write every recorded decision into the artifact the walk was serving — the issue file under `.scratch/<slug>/`, the plan, the spec. With no such artifact, create `.scratch/<slug>/decisions.md`. A later `/self-handoff` references this file instead of restating the decisions.
