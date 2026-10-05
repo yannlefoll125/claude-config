@@ -1,4 +1,4 @@
-# claude-config b1eeeed-SNAPSHOT
+# claude-config 90512d3
 output-styles/eli5.md
 scripts/git-hooks/commit-msg
 scripts/git-hooks/enable
