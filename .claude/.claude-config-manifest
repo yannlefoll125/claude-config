@@ -1,10 +1,12 @@
-# claude-config b5b3fae
+# claude-config b1eeeed-SNAPSHOT
 output-styles/eli5.md
 scripts/git-hooks/commit-msg
 scripts/git-hooks/enable
 scripts/statusline.sh
 skills/commit-plan/SKILL.md
 skills/commit/SKILL.md
+skills/doc-review-fix/SKILL.md
+skills/doc-review-gather/SKILL.md
 skills/install-mattpocock/SKILL.md
 skills/one-by-one/SKILL.md
 skills/self-handoff/SKILL.md
