@@ -90,6 +90,12 @@ misplaced (wrong location), noise (true but useless).
 17. **Scope stamp is replayable (refines 9 and 10).** `scope:` records `full` or the
     resolved paths, never the literal `session`. Fix's stale gate offers three ways:
     re-gather the union of open tickets' scopes, full fresh sweep, or work as-is.
+18. **Gather deferred to continue, opt-in (supersedes 11's create-side dispatch).** The
+    create-side sweep blocked the /clear the handoff exists for: the subagent held the
+    session open. Create now only records the touched-files list in a "Doc review"
+    section of SELF_HANDOFF.md; continue offers "sweep those docs — doc-review-gather"
+    among the next steps and dispatches it in the background only if the user picks it.
+    Decision 15's caller-supplied list now flows through the handoff file.
 
 ## State
 

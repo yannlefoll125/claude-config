@@ -24,7 +24,7 @@ Judge from context which mode was meant, and announce it in your first line ("Wr
 - Belongs in long-term documentation → write it there now, before the handoff: project conventions and setup into `README.md` or `CLAUDE.md`, architecture decisions into `docs/adr/`, domain knowledge into `CONTEXT.md` or `docs/`, issue state into the issue tracker files. Anything a future session would need *regardless* of this specific task is durable, not session state.
 - Only matters for continuing this specific task → that goes in the handoff.
 
-Sorting done, dispatch a subagent to run the `doc-review-gather` skill with scope `session`, listing in its prompt the files this session touched — docs and code alike; the subagent has no session context, so this list is what `session` resolves against. Rot in the docs this session touched is cheapest to catch now, and the subagent keeps the sweep out of this window. Carry on with step 2 while it runs; when it files tickets, reference `.claude/doc-review/issues/` from the handoff instead of restating them.
+Do **not** run `doc-review-gather` now: the sweep is slow, and the user is waiting to /clear — a subagent still sweeping would hold the session open. Instead, list the files this session touched — docs and code alike — in a "Doc review" section of the handoff. That list is what the gather's `session` scope resolves against (a fresh subagent has no session of its own to inspect), so recording it here lets the next session run the sweep without any of this session's context.
 
 **Step 2 — write the handoff, session-relevant content only.** The handoff carries what a fresh agent needs to continue *this* work: current task state, what's done and verified, what's next, open questions, dead ends already tried. It must not duplicate what step 1 just put into the docs — link to those files instead.
 
@@ -47,6 +47,6 @@ Read `SELF_HANDOFF.md` and orient — do **not** start working. Continuing means
 
 1. Give a 2–3 line orientation: where the work stands — what's done, what's in flight.
 2. Sanity-check freshness — compare the handoff's date and referenced commits against `git log`. Flag discrepancies in the orientation: flag, never block.
-3. Lay out the possible next steps (from the handoff's "what's next", open questions, and any steering instructions passed with the invocation); when `.claude/doc-review/issues/` holds open tickets, include "N doc findings pending — `/doc-review-fix`" among them. Then stop and let the user pick. Don't take any of them — not even the handoff's named first action — until the user says so.
+3. Lay out the possible next steps (from the handoff's "what's next", open questions, and any steering instructions passed with the invocation); when `.claude/doc-review/issues/` holds open tickets, include "N doc findings pending — `/doc-review-fix`" among them; when the handoff carries a "Doc review" touched-files list, include "sweep those docs — `doc-review-gather`" among them. Then stop and let the user pick. Don't take any of them — not even the handoff's named first action — until the user says so. The doc sweep is opt-in: if picked, dispatch a subagent to run `doc-review-gather` with scope `session`, passing the handoff's touched-files list in its prompt, and carry on with the user's other work while it runs.
 
 Leave the file in place; the next create overwrites it.
