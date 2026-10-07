@@ -31,7 +31,7 @@ Find the cache directory: `~/.claude/plugins/cache/claude-plugins-official/mattp
 
 Read `SKILL.md` from that setup-skill folder and follow it as if invoked, with these standard answers (unless the arguments or interactive mode say otherwise):
 
-- **Issue tracker**: local markdown — the `.scratch/<feature-slug>/` layout, seeded from the skill's `issue-tracker-local.md` template.
+- **Issue tracker**: local markdown — the `.scratch/<feature-slug>/` layout, seeded from the skill's `issue-tracker-local.md` template, then extended with our sub-effort overlay: apply [issue-tracker-sub-efforts.md](./issue-tracker-sub-efforts.md) (in this skill's folder) to the seeded file.
 - **Triage labels**: keep the defaults, verbatim: `needs-triage`, `needs-info`, `ready-for-agent`, `ready-for-human`, `wontfix`.
 - **Agent-skills block**: local CLAUDE.md — edit the project's existing CLAUDE.md (root or `.claude/`); create a root `CLAUDE.md` if the project has neither it nor `AGENTS.md`. Never touch the global `~/.claude/CLAUDE.md`.
 
