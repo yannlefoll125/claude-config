@@ -46,12 +46,13 @@ All points resolved → three steps, in order:
 
 1. **Recap**: post each point with its recorded decision, one line each.
 2. **Persist**: the recap lives only in chat, which `/clear` erases. Write every recorded decision into the artifact the walk was serving — the issue file under `.scratch/<slug>/`, the plan, the spec. With no such artifact, create `.scratch/<slug>/decisions.md`. A later `/self-handoff` references this file instead of restating the decisions.
-3. **Checkpoint**: measure context fill, then ask one final question. It follows the loop's question conventions — recommendation first, "Explain" last, the native "Other" is chat mode — and the loop's rules for "Explain" and chat mode apply unchanged.
+3. **Checkpoint**: measure context fill, then ask one final question. It follows the loop's question conventions — recommendation first, the native "Other" is chat mode — except there is no "Explain" here: the four fixed options fill the tool's slots, and chat mode covers questions about them.
 
 **Measure context fill**: the question UI hides the statusline, so the number goes into the question text. Read the newest `usage` block in this session's transcript — `~/.claude/projects/<project-slug>/<session-id>.jsonl`, session id lifted from the scratchpad path — and sum `input_tokens + cache_read_input_tokens + cache_creation_input_tokens`. Open the question text with the result: "Context ~132k — …".
 
-**The checkpoint's three fixed options** — "(Recommended)" sits on "Continue now" below ~100k tokens, on "Handoff & clear" at or past it:
+**The checkpoint's four fixed options** — "(Recommended)" sits on "Stay in the same context" below ~100k tokens, on "Handoff & clear" at or past it. The first two decide where follow-up work runs, the last two whether the walk itself is over; only "Reopen points" resumes work in this turn, and only back into the loop:
 
-- **"Continue now"** → carry out the work the decisions unblock.
+- **"Stay in the same context"** → a choice of context, not a work order. Give the turn back to the user: name the next step the decisions unblock (usually a command the user invokes, like `/to-spec` or `/to-tickets`) and end the turn. The user fires that step, never you.
 - **"Handoff & clear"** → prompt the user to run `/self-handoff` and then `/clear`, and end the turn. `/self-handoff` is the user's step; your part ends at the prompt.
+- **"Reopen points"** → stay in the one-by-one flow: ask which point(s) to revisit or add (unless the user already named them), fold them into the working list per "Adapt", and present the next one with the usual marker. The walk ends through "Finish" again, recap and all.
 - **"Just stop"** → end the turn.
