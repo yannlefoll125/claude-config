@@ -30,11 +30,11 @@ if [ -f "$MANIFEST" ]; then
   old_manifest="$(grep -v '^#' "$MANIFEST" | sort || true)"
 fi
 
-# Version stamp: short commit hash of the Config Repo, -SNAPSHOT if dirty.
-version="$(git -C "$SRC" rev-parse --short HEAD 2>/dev/null || echo unknown)"
-if [ -n "$(git -C "$SRC" status --porcelain 2>/dev/null)" ]; then
-  version="$version-SNAPSHOT"
-fi
+# Version stamp: content hash of the shipped payload, so the manifest is a pure
+# function of what ships — identical for dirty and committed trees, meaning the
+# pre-commit install already writes the final stamp and never churns afterwards.
+version="$(cd "$SRC" && find skills output-styles scripts -type f -print0 \
+  | LC_ALL=C sort -z | xargs -0 sha256sum | sha256sum | cut -c1-12)"
 
 for dir in skills output-styles scripts; do
   cp -R "$SRC/$dir" "$DEST/"
