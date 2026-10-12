@@ -1,8 +1,10 @@
 ---
-status: accepted
+status: superseded — see ADR-0010
 ---
 
 # `/setup` is a prompt-driven skill, not a deterministic script
+
+> **Superseded by [ADR-0010](./0010-setup-decides-and-a-deterministic-apply-writes.md).** A deterministic writer returns, split at decide / apply: Setup stays prompt-driven but only decides, recording the Intent; Apply writes. The prose-correctness consequence below still holds for the decide step.
 
 `/setup` explores the Target, presents a recommended set of choices led by the recommended
 answer, and writes only after confirmation. There is no install script and no
