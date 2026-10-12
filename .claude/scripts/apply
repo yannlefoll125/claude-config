@@ -30,9 +30,10 @@
 # "/apply-claude-config refresh". Refresh rewrites a drifted block's content and stamp;
 # hand-edits inside markers are overwritten, every byte outside them is kept, and a
 # current block's file is not written. Deleting a block's markers (or a seed header)
-# forks it out of management: check and refresh no longer see it. Blocks whose id has
-# no shipped source, and files with malformed markers, are reported skipped and left
-# as they are.
+# forks it out of management: check and refresh no longer see it. A block whose id has
+# no shipped source (content generated per project, maintained by the skill that wrote
+# it) is silent while its content matches its stamp; edited, it drifts with a cure
+# refresh can't give. Files with malformed markers are reported skipped and left alone.
 #
 # Intent keys (a JSON object; absent keys take their default):
 #   stalenessHook  boolean, default true — a SessionStart hook in .claude/settings.local.json
@@ -733,9 +734,18 @@ managed_blocks() {
         fi
       fi
       found=$((found + 1))
+      # No shipped source: content generated per project (a skill maintains it).
+      # Current = silent in check; edited = drift refresh can't cure.
       src="$BLOCKS/$id.md"
       if [ ! -f "$src" ]; then
-        report skipped managed-blocks "$rel: $label has no shipped source; left as it is (delete its markers to fork it)"
+        if [ "$mode" = refresh ]; then
+          report skipped managed-blocks "$rel: $label has no shipped source; left as it is"
+        elif [ "$actual" != "$stamp" ]; then
+          report drift managed-blocks "$rel: $label edited inside its markers and has no shipped source; restore it, re-run the skill that wrote it, or delete its markers to fork it"
+          stale=1
+        else
+          current=$((current + 1))
+        fi
         continue
       fi
       want="$(awk 1 "$src" | sha12)"

@@ -87,7 +87,7 @@ A dropped overlay or a block the setup skill no longer produces (e.g. `triage-la
 
 ## Step 5 — verify
 
-Each placed or rewritten block's content hashes to its stamp (the same `sed`/`tail` commands as step 4). Then `.claude/scripts/apply --check`: it must exit 0 with no `managed-blocks` drift line. Its expected output for these blocks is one `skipped managed-blocks: … has no shipped source` line each for `agent-skills` and the seeded files — content generated per project has no Payload source, so Apply leaves it to this skill — and nothing for a current `main-flow-handback`. New or untracked files are invisible to Apply until committed; committing is the user's step.
+Each placed or rewritten block's content hashes to its stamp (the same `sed`/`tail` commands as step 4). Then `.claude/scripts/apply --check`: it must exit 0 and print no `managed-blocks` line — a block with no Payload source (`agent-skills`, the seeded files; content generated per project is left to this skill) is silent while its content matches its stamp, and `main-flow-handback` is checked against its shipped source. A later hand-edit inside sourceless markers surfaces as drift naming this skill as a cure. New or untracked files are invisible to Apply until committed; committing is the user's step.
 
 ## Wrap up
 

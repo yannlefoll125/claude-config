@@ -200,20 +200,37 @@ test_blocks_fork_by_deleting_markers() {
   assert_unchanged "$before" "$TARGET"
 }
 
-test_blocks_unknown_id_skipped() {
+test_blocks_unknown_id_current_is_silent() {
   blocks_target
   printf 'x\n' > "$TEST_TMP/x"
   { printf 'Intro.\n'; inline_block gone "$TEST_TMP/x"; } > "$TARGET/CLAUDE.md"
   git -C "$TARGET" add CLAUDE.md
   before="$(snapshot "$TARGET")"
-  line='skipped managed-blocks: CLAUDE.md: block gone has no shipped source; left as it is (delete its markers to fork it)'
   run "$APPLY" --check
   assert_status 0
-  assert_report
-  assert_line "$line"
+  assert_line_count 0
   run "$APPLY" --refresh
   assert_status 0
+  assert_line "skipped managed-blocks: CLAUDE.md: block gone has no shipped source; left as it is"
+  assert_unchanged "$before" "$TARGET"
+}
+
+test_blocks_unknown_id_edited_drifts_without_refresh_cure() {
+  blocks_target
+  printf 'x\n' > "$TEST_TMP/x"
+  { printf 'Intro.\n'; inline_block gone "$TEST_TMP/x"; } > "$TARGET/CLAUDE.md"
+  sed -i 's/^x$/y/' "$TARGET/CLAUDE.md"
+  git -C "$TARGET" add CLAUDE.md
+  before="$(snapshot "$TARGET")"
+  line='drift managed-blocks: CLAUDE.md: block gone edited inside its markers and has no shipped source; restore it, re-run the skill that wrote it, or delete its markers to fork it'
+  run "$APPLY" --check
+  assert_status 2
+  assert_report
   assert_line "$line"
+  ! grep -Fq 'drift target:' <<<"$output" || fail "edited sourceless block must not suggest converging"
+  run "$APPLY" --refresh
+  assert_status 0
+  assert_line "skipped managed-blocks: CLAUDE.md: block gone has no shipped source; left as it is"
   assert_unchanged "$before" "$TARGET"
 }
 
