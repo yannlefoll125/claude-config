@@ -59,10 +59,31 @@ Re-running Install into every Subscriber at once. It writes into projects beyond
 being worked on, so it is always the user's own step, never an agent's.
 _Avoid_: publish, broadcast, deploy-all
 
+**Intent**:
+The policy a Target's `claude-config.json` records: every choice Setup made — which
+features are on, with which options. Policies, never environment outcomes; anything
+environment-dependent is evaluated at Apply time. Hand-editable; tracked or excluded
+per project, and the machinery assumes neither.
+_Avoid_: config file, feature flags, desired state
+
+**Apply**:
+Converging a Target to its Intent — a deterministic Payload script, run in-session only
+(by Setup and a thin skill); Install and Push stay pure file copies. Writes only untracked state (settings keys, hook symlinks, plugin installs);
+drift in tracked files is reported, never silently written. A Target without an Intent is
+left untouched, with a pointer to Setup.
+_Avoid_: converge, sync, reconcile
+
 **Setup**:
-The in-session step after an Install — `/setup-claude-config` — that wires the copies up:
-base settings written into the Target's `.claude/settings.local.json`. Safe to re-run.
+The in-session conversation after an Install — `/setup-claude-config` — that decides:
+it explores the Target, records the choices as Intent, runs Apply, and does the placement
+only an agent can (merging Managed Blocks into existing files). Safe to re-run.
 _Avoid_: configure, init, bootstrap
+
+**Managed Block**:
+Marker-wrapped, hash-stamped prose the suite owns inside a Target's tracked markdown.
+The hash betrays Staleness; refreshing is mechanical block replacement. Hand-edits belong
+outside the markers — deleting the markers forks the block out of management.
+_Avoid_: region, section, snippet
 
 **Consuming**:
 Using the preferences in a project: Install, then Setup. Needs no credential and no write
