@@ -11,11 +11,24 @@ Prose-verified per the superseding ADR; demoable end-to-end in a scratch project
 
 **Blocked by:** 04 (settings), 05 (git hooks), 06 (plugins), 07 (Managed Blocks).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Setup writes a valid full-scope Intent (policies, never outcomes) and invokes Apply for every mechanical step
-- [ ] Tracked-versus-excluded handled per the rule; neither state is assumed anywhere
-- [ ] Ad-hoc argument overrides still work, now landing in the Intent instead of one-off actions
-- [ ] Re-running Setup is safe: it updates the Intent and re-converges, never duplicates
-- [ ] Skill prose contains no step Apply can perform; rules are specific enough to verify
-- [ ] End-to-end demo in a scratch project: fresh Install → Setup → converged Target, hook silent on next session
+- [x] Setup writes a valid full-scope Intent (policies, never outcomes) and invokes Apply for every mechanical step
+- [x] Tracked-versus-excluded handled per the rule; neither state is assumed anywhere
+- [x] Ad-hoc argument overrides still work, now landing in the Intent instead of one-off actions
+- [x] Re-running Setup is safe: it updates the Intent and re-converges, never duplicates
+- [x] Skill prose contains no step Apply can perform; rules are specific enough to verify
+- [x] End-to-end demo in a scratch project: fresh Install → Setup → converged Target, hook silent on next session
+
+**Notes:** Skill prose is `skills/setup-claude-config/SKILL.md` (the `.claude/` copy syncs
+at commit). It points at the `scripts/apply` header for the authoritative key list and
+writes every key explicitly (notably `statusline: true`, whose Apply default is false).
+Setup places only block `claude-config` (first of `CLAUDE.md`, `.claude/CLAUDE.md`,
+`AGENTS.md`, else a new root `CLAUDE.md`), copying it with the shell and stamping
+`awk 1 src | sha256sum | cut -c1-12`; existing markers mean "already placed", the bare
+heading means "forked". The plugin list carries `mattpocock-skills@claude-plugins-official`
+so Apply installs it; the install-mattpocock chain is unchanged (ticket 09). Demo run in
+a scratch repo under `$HOME`: excluded branch appended `/.claude/claude-config.json` to
+`.git/info/exclude`; Apply exit 0 converging all eight concerns; re-run all `skipped`;
+`apply --check` exit 0 and silent; the SessionStart hook command ran silent; an override
+re-run and the tracked branch both re-converged clean. No Apply changes were needed.
