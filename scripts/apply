@@ -65,6 +65,18 @@
 #                  statusline's stdin JSON and runs
 #                  <workspace.project_dir>/.claude/scripts/statusline.sh, so no absolute
 #                  path is persisted (ADR-0004); false removes statusLine.
+#   mattpocock     object, default absent — not Apply's: read (and, interactively, written)
+#                  by the install-mattpocock skill; Apply ignores it, as it ignores every
+#                  key it doesn't list. Sub-keys:
+#                    issueTracker          "local" | "github" | "gitlab" | "other"
+#                    issueTrackerWorkflow  string — the workflow as prose, for "other"
+#                    triageLabels          object — each of the five triage roles
+#                                          (needs-triage, needs-info, ready-for-agent,
+#                                          ready-for-human, wontfix) to its label string
+#                    domainDocs            "single-context" | "multi-context"
+#                    instructionsFile      path of the file holding the agent-skills block
+#                    overlays              array of "issue-tracker-sub-efforts",
+#                                          "main-flow-handback"
 # Every default but stalenessHook's leaves its settings key out, so "{}" writes only the hook.
 #
 # Owned settings (in .claude/settings.local.json): model, preferredNotifChannel,

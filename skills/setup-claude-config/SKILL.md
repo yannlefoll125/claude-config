@@ -43,6 +43,7 @@ Settings already in `.claude/settings.local.json` are residue, not answers: neve
 | Statusline | `statusline` | `true` — written explicitly: Apply's default is `false` |
 | Git hooks to arm | `gitHooks` | `[]` — offer each shipped hook by its header comment |
 | Project-scope plugins | `plugins` | `["mattpocock-skills@claude-plugins-official"]` |
+| mattpocock setup answers | `mattpocock` | `issueTracker: "local"`, `triageLabels` each role to itself, `domainDocs: "single-context"`, `instructionsFile` the file step 6 picks, `overlays: ["issue-tracker-sub-efforts", "main-flow-handback"]` — written only while `plugins` lists `mattpocock-skills` |
 
 Start from the existing Intent when there is one, else from the standard answers; apply the arguments on top. Then:
 
@@ -97,7 +98,7 @@ The one placement only an agent can do; once placed, Apply checks it and `/apply
 
 ## Step 7 — chain into install-mattpocock
 
-When the Intent's `plugins` lists `mattpocock-skills@claude-plugins-official`, invoke the `install-mattpocock` skill (deployed alongside this one), passing through any arguments that concern it. If the Skill tool does not list it yet (fresh copy, session not reloaded), read `.claude/skills/install-mattpocock/SKILL.md` and follow it directly. It is safe to re-run. Not listed → skip with one line.
+When the Intent's `plugins` lists `mattpocock-skills@claude-plugins-official`, invoke the `install-mattpocock` skill (deployed alongside this one), passing through any arguments that concern it — it records them in the Intent's `mattpocock` key, then configures the plugin Apply installed and places its Managed Blocks. If the Skill tool does not list it yet (fresh copy, session not reloaded), read `.claude/skills/install-mattpocock/SKILL.md` and follow it directly. It is safe to re-run. Not listed → skip with one line.
 
 ## Wrap up
 

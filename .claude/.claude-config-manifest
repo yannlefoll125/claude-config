@@ -1,7 +1,8 @@
-# claude-config 82d81a020fe4
+# claude-config b0d518d2fb63
 output-styles/eli5.md
 scripts/apply
 scripts/blocks/claude-config.md
+scripts/blocks/main-flow-handback.md
 scripts/git-hooks/commit-msg
 scripts/statusline.sh
 skills/apply-claude-config/SKILL.md
@@ -10,7 +11,6 @@ skills/commit/SKILL.md
 skills/doc-review-fix/SKILL.md
 skills/doc-review-gather/SKILL.md
 skills/install-mattpocock/issue-tracker-sub-efforts.md
-skills/install-mattpocock/main-flow-handback.md
 skills/install-mattpocock/SKILL.md
 skills/one-by-one/SKILL.md
 skills/self-handoff/SKILL.md

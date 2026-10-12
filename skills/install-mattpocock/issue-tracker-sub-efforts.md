@@ -1,6 +1,6 @@
 # Overlay: sub-efforts
 
-Our extension to the plugin's `issue-tracker-local.md` seed template. After seeding `docs/agents/issue-tracker.md` from that template, apply both edits below to the seeded file.
+Our extension to the plugin's `issue-tracker-local.md` seed template. When generating the content of `docs/agents/issue-tracker.md` from that template, apply both edits below to it before it is stamped and written.
 
 ## Insert as a new section, directly before the "publish to the issue tracker" section
 

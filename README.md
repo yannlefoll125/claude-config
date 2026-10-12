@@ -24,7 +24,7 @@ The **payload** — the three directories an install copies into a project's `.c
   - `setup-claude-config` — one-shot project setup: permission mode, model, notifications, statusline.
   - `self-handoff` — persist a session to `SELF_HANDOFF.md` before `/clear`, resume after.
   - `one-by-one` — walk open decision points one multiple-choice prompt at a time.
-  - `install-mattpocock` — install and configure the `mattpocock-skills` plugin (from the official plugin marketplace) with standard answers.
+  - `install-mattpocock` — configure the `mattpocock-skills` plugin (which Apply installs from the official plugin marketplace) from its answers in the Intent.
 - `output-styles/` — e.g. `eli5`.
 - `scripts/` — a statusline script and opt-in git hooks.
 
