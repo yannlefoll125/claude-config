@@ -1,6 +1,7 @@
-# claude-config f0f348a7e8bb
+# claude-config 6f3b4a861049
 output-styles/eli5.md
 scripts/apply
+scripts/blocks/claude-config.md
 scripts/git-hooks/commit-msg
 scripts/statusline.sh
 skills/apply-claude-config/SKILL.md

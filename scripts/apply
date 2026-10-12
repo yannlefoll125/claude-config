@@ -1,15 +1,38 @@
 #!/usr/bin/env bash
 # Converge this Target to its Intent (.claude/claude-config.json), or check it.
-# Usage: .claude/scripts/apply [--check]   (from anywhere; the Target is found from this script's location)
-#   (no flag)  converge: write the owned untracked state the Intent asks for.
-#   --check    read-only: report drift between the Target and its Intent, and between
-#              the installed Payload and the Manifest stamp; writes nothing.
+# Usage: .claude/scripts/apply [--check | --refresh]   (from anywhere; the Target is found from this script's location)
+#   (no flag)  converge: write the owned untracked state the Intent asks for. Never
+#              writes a tracked file: Managed Block drift is only reported.
+#   --check    read-only: report drift between the Target and its Intent, between
+#              the installed Payload and the Manifest stamp, and in Managed Blocks.
+#   --refresh  rewrite drifted Managed Blocks from the installed Payload — only between
+#              their markers (see "Managed Blocks" below); nothing else is converged.
 # Report: one stdout line per action, "<done|skipped|drift> <concern>: <detail>".
-#   Check mode prints only drift lines, then — when converging would cure any of them —
+#   Check mode prints only drift lines (plus skipped lines for Managed Blocks it can't
+#   judge), then — when converging would cure any of them —
 #   "drift target: run /apply-claude-config to converge". A clean Target prints nothing.
-# Exit (converge): 0 converged or nothing to do (no Intent included); 1 failure.
+# Exit (converge, --refresh): 0 done or nothing to do (no Intent included); 1 failure.
 # Exit (--check):  0 clean; 1 failure; 2 drift; 3 no Intent (pointer to Setup printed).
 # Errors go to stderr.
+#
+# Managed Blocks: suite-written prose in the Target's git-tracked *.md files. Each marker
+# is a whole line; <id> is [a-z0-9][a-z0-9-]*, <hash> is 12 lowercase hex.
+#   inline:  <!-- claude-config:begin <id> <hash> -->
+#            ...block content: the lines strictly between the two markers...
+#            <!-- claude-config:end <id> -->
+#   seeded:  <!-- claude-config:seed <id> <hash> -->   as line 1 of a whole seeded file;
+#            the content is everything after that line (inline markers there are inert).
+# <hash> is the first 12 hex of sha256 over the content bytes as last written. The
+# shipped content of block <id> is scripts/blocks/<id>.md in the Payload (installed
+# beside this script), read with a final newline guaranteed. A block drifts when its
+# content no longer matches its stamp (edited inside the markers) or its stamp no longer
+# matches the shipped content (behind the Payload); either is reported with the cure,
+# "/apply-claude-config refresh". Refresh rewrites a drifted block's content and stamp;
+# hand-edits inside markers are overwritten, every byte outside them is kept, and a
+# current block's file is not written. Deleting a block's markers (or a seed header)
+# forks it out of management: check and refresh no longer see it. Blocks whose id has
+# no shipped source, and files with malformed markers, are reported skipped and left
+# as they are.
 #
 # Intent keys (a JSON object; absent keys take their default):
 #   stalenessHook  boolean, default true — a SessionStart hook in .claude/settings.local.json
@@ -50,14 +73,18 @@
 set -euo pipefail
 
 usage() {
-  echo "Usage: $0 [--check]" >&2
+  echo "Usage: $0 [--check | --refresh]" >&2
   exit 1
 }
 
 mode=converge
 case $# in
   0) ;;
-  1) [ "$1" = --check ] || usage; mode=check ;;
+  1) case $1 in
+       --check) mode=check ;;
+       --refresh) mode=refresh ;;
+       *) usage ;;
+     esac ;;
   *) usage ;;
 esac
 
@@ -140,7 +167,7 @@ settings_write() { # settings_write <json>
 
 # Each concern <c> has converge_<c> (writes, reports done/skipped) and check_<c>
 # (read-only, calls drift). Both read $INTENT. Steps run in order.
-steps=(staleness_hook model notifications permission_mode statusline git_hooks plugins)
+steps=(staleness_hook model notifications permission_mode statusline git_hooks plugins managed_blocks)
 
 # settings_set <jq-path> <json> / settings_del <jq-path> — write or remove one owned
 # key; a parent object the removal empties is dropped too.
@@ -609,6 +636,139 @@ check_statusline() {
   fi
 }
 
+# --- managed-blocks -------------------------------------------------------------
+# Grammar and lifecycle in the header. Converge and check only report; the cure is
+# the explicit refresh, so check counts block drift as drift converging can't cure.
+BLOCKS="$here/blocks"
+REFRESH_STEP='run /apply-claude-config refresh'
+
+sha12() { sha256sum | cut -c1-12; }
+
+# blocks_parse <file> — one record per line: "seed <id> <stamp>",
+# "block <begin-line> <end-line> <id> <stamp>", or "bad <line> <reason>".
+blocks_parse() {
+  LC_ALL=C awk -v idre='^[a-z0-9][a-z0-9-]*$' -v hre="^$(printf '[0-9a-f]%.0s' {1..12})\$" '
+    function bad(msg, line) { print "bad", line ? line : NR, msg }
+    seeded || !/^<!-- claude-config:(begin|end|seed)( |$)/ { next }
+    {
+      kind = substr($2, 15)
+      if (kind == "seed") {
+        if (!(NF == 5 && $3 ~ idre && $4 ~ hre && $0 == "<!-- claude-config:seed " $3 " " $4 " -->")) bad("malformed seed header")
+        else if (NR != 1) bad("seed header " $3 " not on the first line")
+        else { print "seed", $3, $4; seeded = 1 }
+      } else if (kind == "begin") {
+        if (!(NF == 5 && $3 ~ idre && $4 ~ hre && $0 == "<!-- claude-config:begin " $3 " " $4 " -->")) bad("malformed begin marker")
+        else if (open != "") bad("block " $3 " begins inside block " open)
+        else { open = $3; stamp = $4; start = NR }
+      } else if (!(NF == 4 && $3 ~ idre && $0 == "<!-- claude-config:end " $3 " -->")) bad("malformed end marker")
+      else if (open == "") bad("block " $3 " ends without a begin marker")
+      else if ($3 != open) bad("end marker " $3 " closes block " open)
+      else { print "block", start, NR, open, stamp; open = "" }
+    }
+    END { if (open != "") bad("block " open " never ends", start) }' "$1"
+}
+
+# blocks_rewrite <file> <plan> — replace the content of each planned block, keyed by
+# "<begin-line>\t<end-line>\t<id>\t<stamp>\t<source>" plan lines; other bytes kept.
+blocks_rewrite() {
+  local file="$1" tmp
+  tmp="$(mktemp)"
+  LC_ALL=C awk -F '\t' '
+    FNR == NR { end[$1] = $2; id[$1] = $3; stamp[$1] = $4; src[$1] = $5; next }
+    skip && FNR < skip { next }
+    skip { skip = 0; print; next }
+    FNR in end {
+      print "<!-- claude-config:begin " id[FNR] " " stamp[FNR] " -->"
+      while ((getline line < src[FNR]) > 0) print line
+      close(src[FNR])
+      skip = end[FNR]
+      next
+    }
+    { print }' - "$file" <<<"$2" > "$tmp"
+  # awk ends every line with a newline; keep a missing final one missing.
+  if [ -n "$(tail -c1 "$file")" ]; then
+    head -c -1 "$tmp" > "$file"
+  else
+    cat "$tmp" > "$file"
+  fi
+  rm -f "$tmp"
+}
+
+# managed_blocks <converge|check|refresh> — walk every Managed Block in tracked markdown.
+managed_blocks() {
+  local mode="$1" rel file parsed kind a b id stamp src actual want label state plan
+  local found=0 current=0
+  while IFS= read -r -d '' rel; do
+    file="$TARGET/$rel"
+    [ -f "$file" ] || continue
+    parsed="$(blocks_parse "$file")" || die "cannot read $rel"
+    [ -n "$parsed" ] || continue
+    if read -r _ a b <<<"$(grep '^bad ' <<<"$parsed" | head -n1)" && [ -n "$a" ]; then
+      report skipped managed-blocks "$rel: line $a: $b; markers left as they are"
+      continue
+    fi
+    plan=""
+    while read -r kind a b id stamp; do
+      if [ "$kind" = seed ]; then
+        id="$a" stamp="$b" label="seeded block $a"
+        actual="$(tail -n +2 "$file" | sha12)"
+      else
+        label="block $id"
+        if [ "$b" -gt $((a + 1)) ]; then
+          actual="$(sed -n "$((a + 1)),$((b - 1))p" "$file" | sha12)"
+        else
+          actual="$(printf '' | sha12)"
+        fi
+      fi
+      found=$((found + 1))
+      src="$BLOCKS/$id.md"
+      if [ ! -f "$src" ]; then
+        report skipped managed-blocks "$rel: $label has no shipped source; left as it is (delete its markers to fork it)"
+        continue
+      fi
+      want="$(awk 1 "$src" | sha12)"
+      if [ "$actual" != "$stamp" ]; then state=edited
+      elif [ "$stamp" != "$want" ]; then state=behind
+      else state=current
+      fi
+      if [ "$state" = current ]; then
+        current=$((current + 1))
+        [ "$mode" = refresh ] && report skipped managed-blocks "$rel: $label current"
+        continue
+      fi
+      if [ "$mode" != refresh ]; then
+        if [ "$state" = edited ]; then
+          report drift managed-blocks "$rel: $label edited inside its markers; $REFRESH_STEP to rewrite it (overwrites those edits)"
+        else
+          report drift managed-blocks "$rel: $label behind the Payload; $REFRESH_STEP to rewrite it"
+        fi
+        stale=1
+        continue
+      fi
+      if [ "$kind" = seed ]; then
+        { printf '<!-- claude-config:seed %s %s -->\n' "$id" "$want"; awk 1 "$src"; } > "$file"
+      else
+        plan+="$a"$'\t'"$b"$'\t'"$id"$'\t'"$want"$'\t'"$src"$'\n'
+      fi
+      if [ "$state" = edited ]; then
+        report done managed-blocks "$rel: $label refreshed from the Payload (edits inside its markers overwritten)"
+      else
+        report done managed-blocks "$rel: $label refreshed from the Payload"
+      fi
+    done < <(grep -v '^bad ' <<<"$parsed")
+    [ -z "$plan" ] || blocks_rewrite "$file" "${plan%$'\n'}"
+  done < <(cd "$TARGET" && git ls-files -z -- '*.md' 2>/dev/null \
+    | xargs -0 -r grep -lZE '^<!-- claude-config:(begin|end|seed)( |$)' -- 2>/dev/null)
+  if [ "$mode" != check ] && [ "$found" -eq 0 ]; then
+    report skipped managed-blocks "no Managed Blocks in tracked markdown"
+  elif [ "$mode" = converge ] && [ "$current" -gt 0 ]; then
+    report skipped managed-blocks "$current block(s) current"
+  fi
+}
+
+converge_managed_blocks() { managed_blocks converge; }
+check_managed_blocks() { managed_blocks check; }
+
 # --- payload (check only) -------------------------------------------------------
 # Recompute the Manifest stamp the way claude-config-install computes it, over the
 # files the Manifest lists. Apply can't cure a mismatch — re-installing does.
@@ -639,6 +799,11 @@ fi
 command -v jq >/dev/null || die "jq is required"
 jq -e 'type == "object"' "$INTENT" >/dev/null 2>&1 \
   || die "cannot read Intent $INTENT: not a JSON object (or jq failed)"
+
+if [ "$mode" = refresh ]; then
+  managed_blocks refresh
+  exit 0
+fi
 
 if [ "$mode" = converge ]; then
   for step in "${steps[@]}"; do
