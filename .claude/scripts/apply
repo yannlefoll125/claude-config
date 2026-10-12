@@ -1,14 +1,32 @@
 #!/usr/bin/env bash
-# Converge this Target to its Intent (.claude/claude-config.json).
-# Usage: .claude/scripts/apply   (from anywhere; the Target is found from this script's location)
+# Converge this Target to its Intent (.claude/claude-config.json), or check it.
+# Usage: .claude/scripts/apply [--check]   (from anywhere; the Target is found from this script's location)
+#   (no flag)  converge: write the owned untracked state the Intent asks for.
+#   --check    read-only: report drift between the Target and its Intent, and between
+#              the installed Payload and the Manifest stamp; writes nothing.
 # Report: one stdout line per action, "<done|skipped|drift> <concern>: <detail>".
-# Exit: 0 converged or nothing to do; 1 failure (message on stderr).
+#   Check mode prints only drift lines, then — when converging would cure any of them —
+#   "drift target: run /apply-claude-config to converge". A clean Target prints nothing.
+# Exit (converge): 0 converged or nothing to do (no Intent included); 1 failure.
+# Exit (--check):  0 clean; 1 failure; 2 drift; 3 no Intent (pointer to Setup printed).
+# Errors go to stderr.
+#
+# Intent keys (a JSON object; absent keys take their default):
+#   stalenessHook  boolean, default true — a SessionStart hook in .claude/settings.local.json
+#                  running "apply --check" via $CLAUDE_PROJECT_DIR; false removes it.
 set -euo pipefail
 
-if [ $# -ne 0 ]; then
-  echo "Usage: $0" >&2
+usage() {
+  echo "Usage: $0 [--check]" >&2
   exit 1
-fi
+}
+
+mode=converge
+case $# in
+  0) ;;
+  1) [ "$1" = --check ] || usage; mode=check ;;
+  *) usage ;;
+esac
 
 # Resolved fresh on every run, never persisted: Host and Sandbox mount the
 # Target at different absolute paths (ADR-0009).
@@ -19,6 +37,8 @@ if [ "$(basename "$here")" != scripts ] || [ "$(basename "$(dirname "$here")")" 
 fi
 TARGET="$(cd "$here/../.." && pwd)"
 INTENT="$TARGET/.claude/claude-config.json"
+SETTINGS="$TARGET/.claude/settings.local.json"
+MANIFEST="$TARGET/.claude/.claude-config-manifest"
 
 report() { # report <done|skipped|drift> <concern> <detail>
   printf '%s %s: %s\n' "$1" "$2" "$3"
@@ -29,12 +49,114 @@ die() {
   exit 1
 }
 
-# Convergence steps, run in order; each name <c> is a function converge_<c>
-# that reads $INTENT and reports one line per action.
-steps=()
+# drift <concern> <detail> — check mode: report drift that converging cures.
+drifted=0
+drift() {
+  report drift "$1" "$2"
+  drifted=1
+}
+
+# intent_bool <key> <default> — the Intent's boolean at top-level <key>.
+intent_bool() {
+  jq -r --arg k "$1" --argjson d "$2" '
+    if has($k) then (if (.[$k] | type) == "boolean" then .[$k] else error("not a boolean") end)
+    else $d end' "$INTENT" 2>/dev/null || die "Intent key $1 must be true or false"
+}
+
+# Settings: Apply owns a fixed set of keys in the untracked settings.local.json;
+# everything else in the file is left as it is. The file is rewritten only when a
+# converge step changes something, so a converged file stays byte-identical.
+settings_json() {
+  if [ -f "$SETTINGS" ]; then
+    jq -c . "$SETTINGS" 2>/dev/null || die "cannot read $SETTINGS: not valid JSON"
+  else
+    echo '{}'
+  fi
+}
+
+settings_write() { # settings_write <json>
+  local pretty
+  pretty="$(jq . <<<"$1")"
+  printf '%s\n' "$pretty" > "$SETTINGS"
+}
+
+# Each concern <c> has converge_<c> (writes, reports done/skipped) and check_<c>
+# (read-only, calls drift). Both read $INTENT. Steps run in order.
+steps=(staleness_hook)
+
+# --- staleness-hook -----------------------------------------------------------
+# Owned entry: the SessionStart hook whose command is exactly HOOK_CMD. The
+# hooks-documented project-dir variable keeps absolute paths out of settings,
+# and "|| true" keeps the session unblocked: stdout reaches the session context.
+HOOK_CMD='"$CLAUDE_PROJECT_DIR"/.claude/scripts/apply --check || true'
+
+hook_present() { # hook_present <settings-json>
+  jq -e --arg cmd "$HOOK_CMD" 'any(.hooks.SessionStart[]?.hooks[]?; .command == $cmd)' <<<"$1" >/dev/null
+}
+
+converge_staleness_hook() {
+  local on current
+  on="$(intent_bool stalenessHook true)"
+  current="$(settings_json)"
+  if [ "$on" = true ]; then
+    if hook_present "$current"; then
+      report skipped staleness-hook "already in place"
+    else
+      settings_write "$(jq -c --arg cmd "$HOOK_CMD" \
+        '.hooks.SessionStart += [{hooks: [{type: "command", command: $cmd}]}]' <<<"$current")"
+      report done staleness-hook "SessionStart check added to .claude/settings.local.json"
+    fi
+  elif hook_present "$current"; then
+    # Remove only the owned command; drop containers only if that emptied them.
+    settings_write "$(jq -c --arg cmd "$HOOK_CMD" '
+      .hooks.SessionStart |= map(
+        if any(.hooks[]?; .command == $cmd)
+        then (.hooks |= map(select(.command != $cmd))) | select(.hooks | length > 0)
+        else . end)
+      | if (.hooks.SessionStart | length) == 0 then del(.hooks.SessionStart) else . end
+      | if (.hooks | length) == 0 then del(.hooks) else . end' <<<"$current")"
+    report done staleness-hook "SessionStart check removed (disabled in Intent)"
+  else
+    report skipped staleness-hook "disabled in Intent"
+  fi
+}
+
+check_staleness_hook() {
+  local on current
+  on="$(intent_bool stalenessHook true)"
+  current="$(settings_json)"
+  if [ "$on" = true ] && ! hook_present "$current"; then
+    drift staleness-hook "SessionStart check missing from .claude/settings.local.json"
+  elif [ "$on" = false ] && hook_present "$current"; then
+    drift staleness-hook "SessionStart check present but disabled in Intent"
+  fi
+}
+
+# --- payload (check only) -------------------------------------------------------
+# Recompute the Manifest stamp the way claude-config-install computes it, over the
+# files the Manifest lists. Apply can't cure a mismatch — re-installing does.
+stale=0
+check_payload() {
+  local stamp actual
+  if [ ! -f "$MANIFEST" ]; then
+    report drift payload "no .claude/.claude-config-manifest; re-run claude-config-install for this Target"
+    stale=1
+    return
+  fi
+  stamp="$(sed -n 's/^# claude-config \([0-9a-f]*\)$/\1/p' "$MANIFEST" | head -n1)"
+  actual="$(cd "$TARGET/.claude" && grep -v '^#' "$MANIFEST" | grep -v '^$' | LC_ALL=C sort \
+    | while IFS= read -r rel; do
+        if [ -f "$rel" ]; then sha256sum "$rel"; else echo "missing $rel"; fi
+      done | sha256sum | cut -c1-12)"
+  if [ "$actual" != "$stamp" ]; then
+    report drift payload "installed files differ from the Manifest stamp ${stamp:-(none)}; re-run claude-config-install for this Target"
+    stale=1
+  fi
+}
 
 if [ ! -f "$INTENT" ]; then
   report skipped intent "no .claude/claude-config.json; run /setup-claude-config to create it"
+  [ "$mode" = check ] && exit 3
   exit 0
 fi
 
@@ -42,6 +164,19 @@ command -v jq >/dev/null || die "jq is required"
 jq -e 'type == "object"' "$INTENT" >/dev/null 2>&1 \
   || die "cannot read Intent $INTENT: not a JSON object (or jq failed)"
 
-for step in ${steps[@]+"${steps[@]}"}; do
-  "converge_$step"
+if [ "$mode" = converge ]; then
+  for step in "${steps[@]}"; do
+    "converge_$step"
+  done
+  exit 0
+fi
+
+for step in "${steps[@]}"; do
+  "check_$step"
 done
+check_payload
+if [ "$drifted" -eq 1 ]; then
+  report drift target "run /apply-claude-config to converge"
+fi
+[ "$drifted" -eq 0 ] && [ "$stale" -eq 0 ] || exit 2
+exit 0

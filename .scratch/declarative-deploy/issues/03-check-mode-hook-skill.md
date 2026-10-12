@@ -11,11 +11,11 @@ runs the check at session start so a stale Target greets the user with the sugge
 
 **Blocked by:** 01 (Apply walking skeleton and CLI-seam test harness).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Check mode is read-only (byte-identical Target before and after) and its exit codes distinguish drift / clean / no-Intent
-- [ ] Manifest-stamp staleness (installed Payload older than what the stamp records) is detected from day one
-- [ ] The skill runs Apply in the current environment and relays the one-line-per-action report verbatim
-- [ ] Apply converges the SessionStart hook entry from the Intent like any other owned settings key; disabling it in the Intent removes it
-- [ ] Demoable: opening a session in a drifted Target surfaces the one-line suggestion; a clean Target stays silent
-- [ ] All behavior covered through the CLI-seam harness
+- [x] Check mode is read-only (byte-identical Target before and after) and its exit codes distinguish drift / clean / no-Intent
+- [x] Manifest-stamp staleness (installed Payload older than what the stamp records) is detected from day one
+- [x] The skill runs Apply in the current environment and relays the one-line-per-action report verbatim
+- [x] Apply converges the SessionStart hook entry from the Intent like any other owned settings key; disabling it in the Intent removes it
+- [x] Demoable: opening a session in a drifted Target surfaces the one-line suggestion; a clean Target stays silent
+- [x] All behavior covered through the CLI-seam harness
