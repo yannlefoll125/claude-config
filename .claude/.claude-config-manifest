@@ -1,8 +1,7 @@
-# claude-config 92c35013d80c
+# claude-config 582519e7f991
 output-styles/eli5.md
 scripts/apply
 scripts/git-hooks/commit-msg
-scripts/git-hooks/enable
 scripts/statusline.sh
 skills/apply-claude-config/SKILL.md
 skills/commit-plan/SKILL.md

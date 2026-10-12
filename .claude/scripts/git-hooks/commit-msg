@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # commit-msg hook: quietly strip Co-Authored-By trailers from the message.
 # Shipped to projects as .claude/scripts/git-hooks/commit-msg; opt in per
-# project by running the sibling `enable` script (symlinks it into .git/hooks).
+# project by listing it in the Intent's gitHooks, then running Apply.
 set -euo pipefail
 
 msg_file="$1"

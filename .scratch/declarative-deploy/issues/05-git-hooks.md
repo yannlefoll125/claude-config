@@ -10,10 +10,10 @@ Intent wants but that aren't armed, and vice versa.
 
 **Blocked by:** 03 (check mode, staleness hook, apply skill).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Intent-listed hooks are armed as relative symlinks; re-run changes nothing
-- [ ] Dropping a hook from the Intent removes the suite's symlink
-- [ ] A foreign hook (file or symlink elsewhere) is never modified; Apply refuses with an explanation
-- [ ] The standalone enable script is gone from the Payload and its documented flow replaced by Intent + Apply
-- [ ] Check mode detects both missing and surplus suite-owned hooks
+- [x] Intent-listed hooks are armed as relative symlinks; re-run changes nothing
+- [x] Dropping a hook from the Intent removes the suite's symlink
+- [x] A foreign hook (file or symlink elsewhere) is never modified; Apply refuses with an explanation
+- [x] The standalone enable script is gone from the Payload and its documented flow replaced by Intent + Apply (Apply header + commit-msg comment; README/CLAUDE.md prose is ticket 10)
+- [x] Check mode detects both missing and surplus suite-owned hooks

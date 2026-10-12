@@ -14,6 +14,11 @@
 # Intent keys (a JSON object; absent keys take their default):
 #   stalenessHook  boolean, default true — a SessionStart hook in .claude/settings.local.json
 #                  running "apply --check" via $CLAUDE_PROJECT_DIR; false removes it.
+#   gitHooks       array of hook names, default [] — each shipped hook in
+#                  .claude/scripts/git-hooks/ to arm, as a relative symlink in the repo's
+#                  hooks dir (core.hooksPath honoured). A suite-owned link (one resolving
+#                  into .claude/scripts/git-hooks/) that the list drops is removed; a
+#                  foreign hook in a slot is never touched — Apply refuses and says so.
 #   plugins        array of "<plugin>@<marketplace>" strings, default [] — plugins wanted
 #                  at project scope. Split scope: the enabledPlugins entry in the
 #                  (possibly tracked) .claude/settings.json is shared; the plugin cache
@@ -67,6 +72,14 @@ drift() {
 # can't cure it; it still makes the check exit 2, without the skill suggestion.
 stale=0
 
+# drift_manual <concern> <detail> — check mode: report drift converging won't cure
+# (the detail says what the user must do); exits 2 without suggesting the skill.
+manual=0
+drift_manual() {
+  report drift "$1" "$2"
+  manual=1
+}
+
 # intent_bool <key> <default> — the Intent's boolean at top-level <key>.
 intent_bool() {
   jq -r --arg k "$1" --argjson d "$2" '
@@ -93,7 +106,7 @@ settings_write() { # settings_write <json>
 
 # Each concern <c> has converge_<c> (writes, reports done/skipped) and check_<c>
 # (read-only, calls drift). Both read $INTENT. Steps run in order.
-steps=(staleness_hook plugins)
+steps=(staleness_hook git_hooks plugins)
 
 # --- staleness-hook -----------------------------------------------------------
 # Owned entry: the SessionStart hook whose command is exactly HOOK_CMD. The
@@ -239,6 +252,142 @@ check_plugins() {
   done <<<"$(dropped_plugins "$wanted" "$enabled")"
 }
 
+# --- git-hooks -------------------------------------------------------------------
+# Ownership is stateless: a hooks-dir entry is the suite's when it is a symlink
+# resolving into the Target's .claude/scripts/git-hooks/. Anything else in a slot is
+# foreign and never modified. Links are relative, so they resolve wherever the
+# Target is mounted (ADR-0009).
+
+# intent_hooks — the Intent's gitHooks names, one per line, deduplicated.
+intent_hooks() {
+  jq -r 'if has("gitHooks") then .gitHooks else [] end
+    | if type == "array" and all(.[]; type == "string" and test("^[a-z0-9][a-z0-9-]*$"))
+      then unique[] else error("not an array of hook names") end' "$INTENT" 2>/dev/null \
+    || die "Intent key gitHooks must be an array of hook names"
+}
+
+# hooks_locate — set HOOK_SRC (the installed hooks), HOOKS_DIR (the repo's hooks dir,
+# core.hooksPath honoured; physical when it exists) and HOOKS_REL (HOOKS_DIR for
+# reports, relative to the Target when inside it). Returns 1 outside a git repo.
+hooks_locate() {
+  local top dir
+  top="$(cd "$TARGET" && pwd -P)"
+  HOOK_SRC="$top/.claude/scripts/git-hooks"
+  command -v git >/dev/null || return 1
+  dir="$(cd "$TARGET" && git rev-parse --git-path hooks 2>/dev/null)" || return 1
+  case $dir in /*) ;; *) dir="$top/$dir" ;; esac
+  [ ! -d "$dir" ] || dir="$(cd "$dir" && pwd -P)"
+  HOOKS_DIR="$dir"
+  HOOKS_REL="${dir#"$top"/}"
+}
+
+relpath() { # relpath <from-dir> <to-path>
+  local from="$1" to="$2" up=""
+  while [ "${to#"$from"/}" = "$to" ] && [ "$from" != / ]; do
+    from="$(dirname "$from")"
+    up="../$up"
+  done
+  if [ "$from" = / ]; then printf '%s\n' "$to"; else printf '%s%s\n' "$up" "${to#"$from"/}"; fi
+}
+
+owned_link() { # owned_link <path> — a symlink resolving into HOOK_SRC
+  [ -L "$1" ] || return 1
+  case "$(readlink -f "$1" || true)" in "$HOOK_SRC"/*) return 0 ;; esac
+  return 1
+}
+
+# slot_state <name> — absent | armed (the expected relative link) | owned (the
+# suite's, but not that link) | foreign.
+slot_state() {
+  local dest="$HOOKS_DIR/$1"
+  if [ ! -e "$dest" ] && [ ! -L "$dest" ]; then
+    echo absent
+  elif [ -L "$dest" ] && [ "$(readlink "$dest")" = "$(relpath "$HOOKS_DIR" "$HOOK_SRC/$1")" ]; then
+    echo armed
+  elif owned_link "$dest"; then
+    echo owned
+  else
+    echo foreign
+  fi
+}
+
+# hooks_prepare <wanted> — locate the hooks dir and validate the Intent's names;
+# returns 1 when there is nothing to manage (no repo and no hooks wanted).
+hooks_prepare() {
+  local name
+  if ! hooks_locate; then
+    [ -z "$1" ] || die "Intent key gitHooks lists hooks but $TARGET is not a git repository"
+    return 1
+  fi
+  for name in $1; do
+    [ -f "$HOOK_SRC/$name" ] \
+      || die "Intent key gitHooks lists $name, which the installed Payload doesn't ship (.claude/scripts/git-hooks/)"
+  done
+}
+
+converge_git_hooks() {
+  local wanted name dest reported=0
+  wanted="$(intent_hooks)"
+  if ! hooks_prepare "$wanted"; then
+    report skipped git-hooks "none in Intent"
+    return
+  fi
+  if [ -n "$wanted" ]; then
+    mkdir -p "$HOOKS_DIR"
+    hooks_locate
+  fi
+  for name in $wanted; do
+    dest="$HOOKS_DIR/$name"
+    case "$(slot_state "$name")" in
+      armed) report skipped git-hooks "$name already armed" ;;
+      absent)
+        ln -s "$(relpath "$HOOKS_DIR" "$HOOK_SRC/$name")" "$dest"
+        report done git-hooks "$name armed in $HOOKS_REL" ;;
+      owned)
+        rm -f "$dest"
+        ln -s "$(relpath "$HOOKS_DIR" "$HOOK_SRC/$name")" "$dest"
+        report done git-hooks "$name re-linked relatively in $HOOKS_REL" ;;
+      foreign)
+        report skipped git-hooks "$name not armed: $HOOKS_REL/$name is a foreign hook Apply won't touch; move it aside to arm the suite's" ;;
+    esac
+    reported=1
+  done
+  for dest in "$HOOKS_DIR"/*; do
+    name="$(basename "$dest")"
+    grep -Fxq -- "$name" <<<"$wanted" && continue
+    if owned_link "$dest"; then
+      rm -f "$dest"
+      report done git-hooks "$name disarmed (not in Intent)"
+      reported=1
+    elif [ -f "$HOOK_SRC/$name" ] && [ -e "$dest" ]; then
+      report skipped git-hooks "$name not in Intent; $HOOKS_REL/$name is a foreign hook, left untouched"
+      reported=1
+    fi
+  done
+  [ "$reported" -eq 1 ] || report skipped git-hooks "none in Intent"
+}
+
+check_git_hooks() {
+  local wanted name dest
+  wanted="$(intent_hooks)"
+  hooks_prepare "$wanted" || return 0
+  for name in $wanted; do
+    case "$(slot_state "$name")" in
+      armed) ;;
+      absent) drift git-hooks "$name not armed in $HOOKS_REL" ;;
+      owned) drift git-hooks "$name in $HOOKS_REL is not the expected relative link" ;;
+      foreign)
+        drift_manual git-hooks "$name not armed: $HOOKS_REL/$name is a foreign hook Apply won't touch; move it aside, then run /apply-claude-config" ;;
+    esac
+  done
+  for dest in "$HOOKS_DIR"/*; do
+    name="$(basename "$dest")"
+    grep -Fxq -- "$name" <<<"$wanted" && continue
+    owned_link "$dest" && drift git-hooks "$name armed but not in Intent"
+  done
+  return 0
+}
+
 # --- payload (check only) -------------------------------------------------------
 # Recompute the Manifest stamp the way claude-config-install computes it, over the
 # files the Manifest lists. Apply can't cure a mismatch — re-installing does.
@@ -284,5 +433,5 @@ check_payload
 if [ "$drifted" -eq 1 ]; then
   report drift target "run /apply-claude-config to converge"
 fi
-[ "$drifted" -eq 0 ] && [ "$stale" -eq 0 ] || exit 2
+[ "$drifted" -eq 0 ] && [ "$stale" -eq 0 ] && [ "$manual" -eq 0 ] || exit 2
 exit 0
