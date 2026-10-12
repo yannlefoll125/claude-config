@@ -4,7 +4,7 @@
 
 - Skills are authored under `skills/` at the repo root, but Claude Code only loads them from `.claude/skills/`. Install by copying (`./claude-config-install <project>` at the repo root does this for any project, including this one); commit both copies.
 - When to install: run `claude-config-install` for this repo only as part of committing (sync the `.claude/` copies in the same commit as their sources), or when the user explicitly asks. Agents use only `claude-config-install`, never `claude-config-push`: push writes into every subscribed project outside this repo, and there's no guarantee this repo is being edited from a sandboxed harness — pushing is the user's own step. Never auto-install after edits — work in progress must not be dogfooded into the live `.claude/` config until it's commit-worthy.
-- Consuming flow: `make install` once symlinks `claude-config-install` and `claude-config-push` into `~/.local/bin` (the scripts resolve the symlink back to this repo, so a plain copy would break it). Then in any project: `claude-config-install` (defaults to `.`) followed by `/setup-claude-config` in a session there. Base settings land in that project's `.claude/settings.local.json`, gitignored here.
+- Consuming flow: `make install` once symlinks `claude-config-install` and `claude-config-push` into `~/.local/bin` (the scripts resolve the symlink back to this repo, so a plain copy would break it). Then in any project: `claude-config-install` (defaults to `.`) followed by `/setup-claude-config` in a session there, which writes the project's Intent (`.claude/claude-config.json`) and runs Apply. Apply's settings land in that project's `.claude/settings.local.json`, gitignored here; this repo's own Intent is tracked.
 - The manifest header `# claude-config <12 hex>` is a content hash of the payload (`skills`, `output-styles`, `scripts`), not a git hash: the pre-commit install already writes the final stamp, so the synced manifest rides the work commit and re-installing after the commit changes nothing — no trailing "record clean install" commit. To map a stamp to the commit that introduced it: `git log -S'<hash>' --oneline -- .claude/.claude-config-manifest`.
 - Subscriptions: `claude-config-install` records the target in `~/.config/claude-config/subscribers` (one absolute path per line, `#` comments allowed); `claude-config-push` re-installs into every listed path, warning and skipping paths that don't exist (they stay subscribed). Install writes `.claude/.claude-config-manifest` in the target and on the next run deletes only files listed there that the repo no longer ships — project-specific files in the managed dirs are never touched.
 - Settings facts verified 2026-08-29: `preferredNotifChannel: "notifications_disabled"` is the real notifications-off value (the docs' settings reference doesn't list it); an unavailable `model` value falls back silently; the docs claim `permissions.defaultMode: "auto"` only works in `~/.claude/settings.json`, but this repo uses it project-level as its convention.
@@ -12,6 +12,7 @@
 - `claude plugin install/uninstall --scope project` reads and writes `enabledPlugins` in the project's `.claude/settings.json`; uninstall fails without the matching `--scope`. Plugin files land in `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/` immediately on install and are usable from there without any reload.
 - In this Sandbox, `/workspaces` is root-owned; only the home directory is writable for scratch projects.
 
+<!-- claude-config:begin agent-skills 8e6fbeaa0132 -->
 ## Agent skills
 
 ### Issue tracker
@@ -25,7 +26,9 @@ The five canonical triage roles, used verbatim (`needs-triage`, `needs-info`, `r
 ### Domain docs
 
 Single-context — one `CONTEXT.md` plus `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+<!-- claude-config:end agent-skills -->
 
+<!-- claude-config:begin main-flow-handback e9b647966369 -->
 ### Main-flow handback
 
 Specs and ticket breakdowns are produced only by the user invoking `/to-spec`
@@ -33,3 +36,14 @@ and `/to-tickets` — never ad-hoc. When a grilling or any discussion converges
 on a buildable idea, end the turn and name the next command. Even on
 "go ahead", don't improvise the artifact: ask the user to invoke the slash
 command instead. An ad-hoc spec or ticket set is a failure, not initiative.
+<!-- claude-config:end main-flow-handback -->
+
+<!-- claude-config:begin claude-config f4249714767c -->
+## Claude Code configuration
+
+This project's Claude Code setup comes from claude-config. What it turns on is declared
+in `.claude/claude-config.json`; run `/apply-claude-config` after editing that file.
+Text between `claude-config:begin` and `claude-config:end` markers is owned by the suite
+and rewritten by `/apply-claude-config refresh`: write your own notes outside the
+markers, or delete the markers to keep a block as your own.
+<!-- claude-config:end claude-config -->

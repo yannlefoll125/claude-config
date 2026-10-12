@@ -11,10 +11,17 @@ retired enable-script flow.
 
 **Blocked by:** 08 (Setup decide step), 09 (install-mattpocock intent-driven).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] This repo has a tracked, converged Intent; check mode reports clean in a fresh session
-- [ ] The tracked-Intent branch is thereby exercised in real use (exclude rule correctly skipped)
-- [ ] README distribution-model section describes Intent, Apply, the skill, and the staleness hook using glossary vocabulary
-- [ ] References to the retired per-hook enable flow are gone from README and CLAUDE.md
-- [ ] Migration note for other Subscribers recorded (one Setup conversation each; no synthesis from residue)
+- [x] This repo has a tracked, converged Intent; check mode reports clean in a fresh session
+- [x] The tracked-Intent branch is thereby exercised in real use (exclude rule correctly skipped)
+- [x] README distribution-model section describes Intent, Apply, the skill, and the staleness hook using glossary vocabulary
+- [x] References to the retired per-hook enable flow are gone from README and CLAUDE.md
+- [x] Migration note for other Subscribers recorded (one Setup conversation each; no synthesis from residue)
+
+Notes: the Intent's `gitHooks` is `[]`, mirroring what was armed (nothing). In
+`.claude/CLAUDE.md` the existing agent-skills and main-flow-handback sections were wrapped
+and stamped as Managed Blocks (their prose is what the machinery produces), and the
+`claude-config` block was appended; the three `docs/agents/*.md` files stay forked — they
+predate seed headers and diverge from the current plugin templates. The migration note
+lives in the README under "Migrating an existing subscriber".

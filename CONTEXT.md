@@ -97,9 +97,11 @@ a Push.
 _Avoid_: editing config, updating config
 
 **Staleness**:
-The state of a Target whose installed copies are older than the Config Repo's Payload.
-Nothing in the Target detects it; only the Manifest's version stamp betrays it, and only
-the next Install or Push cures it.
+The state of a Target that lags what it should be: installed copies older than the Config
+Repo's Payload, which only the Manifest's version stamp betrays and only the next Install or
+Push cures; or configuration behind its Intent and installed Payload (settings, hooks,
+plugins, Managed Blocks), which Apply's check mode detects — run at session start by the
+staleness hook — and Apply cures.
 _Avoid_: drift, out of date, unsynced
 
 **Config Plugin**:

@@ -1,0 +1,27 @@
+{
+  "stalenessHook": true,
+  "model": "claude-fable-5",
+  "notifications": false,
+  "permissionMode": "auto-if-virtualised",
+  "statusline": true,
+  "gitHooks": [],
+  "plugins": [
+    "mattpocock-skills@claude-plugins-official"
+  ],
+  "mattpocock": {
+    "issueTracker": "local",
+    "triageLabels": {
+      "needs-triage": "needs-triage",
+      "needs-info": "needs-info",
+      "ready-for-agent": "ready-for-agent",
+      "ready-for-human": "ready-for-human",
+      "wontfix": "wontfix"
+    },
+    "domainDocs": "single-context",
+    "instructionsFile": ".claude/CLAUDE.md",
+    "overlays": [
+      "issue-tracker-sub-efforts",
+      "main-flow-handback"
+    ]
+  }
+}
