@@ -11,10 +11,10 @@ indistinguishable from the suite's (stateless-removal decision).
 
 **Blocked by:** 03 (check mode, staleness hook, apply skill).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Intent-listed plugin converges via the stubbed plugin CLI at project scope; already-installed is a reported no-op
-- [ ] CLI unavailable → skip with reason, nonzero-free exit, rest of Apply unaffected
-- [ ] Dropped plugin → report-only, nothing uninstalled, settings entry left for the user
-- [ ] Check mode reports an Intent-listed plugin missing from project scope
-- [ ] Split-scope behavior documented in the report wording (entry converged vs cache per-environment)
+- [x] Intent-listed plugin converges via the stubbed plugin CLI at project scope; already-installed is a reported no-op
+- [x] CLI unavailable → skip with reason, nonzero-free exit, rest of Apply unaffected
+- [x] Dropped plugin → report-only, nothing uninstalled, settings entry left for the user
+- [x] Check mode reports an Intent-listed plugin missing from project scope
+- [x] Split-scope behavior documented in the report wording (entry converged vs cache per-environment)

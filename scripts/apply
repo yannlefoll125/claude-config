@@ -14,6 +14,14 @@
 # Intent keys (a JSON object; absent keys take their default):
 #   stalenessHook  boolean, default true — a SessionStart hook in .claude/settings.local.json
 #                  running "apply --check" via $CLAUDE_PROJECT_DIR; false removes it.
+#   plugins        array of "<plugin>@<marketplace>" strings, default [] — plugins wanted
+#                  at project scope. Split scope: the enabledPlugins entry in the
+#                  (possibly tracked) .claude/settings.json is shared; the plugin cache
+#                  lives in each environment's ${CLAUDE_CONFIG_DIR:-~/.claude}, so each
+#                  environment's own Apply run converges its cache. Apply installs via
+#                  "claude plugin install --scope project" (which writes the entry),
+#                  skipping with a reason when the CLI isn't on PATH. Enabled plugins the
+#                  Intent doesn't list are reported for manual removal, never uninstalled.
 set -euo pipefail
 
 usage() {
@@ -55,6 +63,9 @@ drift() {
   report drift "$1" "$2"
   drifted=1
 }
+# Check mode: set by drift reported directly (report drift ...) because converging
+# can't cure it; it still makes the check exit 2, without the skill suggestion.
+stale=0
 
 # intent_bool <key> <default> — the Intent's boolean at top-level <key>.
 intent_bool() {
@@ -82,7 +93,7 @@ settings_write() { # settings_write <json>
 
 # Each concern <c> has converge_<c> (writes, reports done/skipped) and check_<c>
 # (read-only, calls drift). Both read $INTENT. Steps run in order.
-steps=(staleness_hook)
+steps=(staleness_hook plugins)
 
 # --- staleness-hook -----------------------------------------------------------
 # Owned entry: the SessionStart hook whose command is exactly HOOK_CMD. The
@@ -132,10 +143,105 @@ check_staleness_hook() {
   fi
 }
 
+# --- plugins --------------------------------------------------------------------
+# Apply never writes .claude/settings.json itself: the plugin CLI does, run from the
+# Target so --scope project lands there. Installed = entry enabled and cached here.
+PROJECT_SETTINGS="$TARGET/.claude/settings.json"
+PLUGIN_CACHE="${CLAUDE_CONFIG_DIR:-$HOME/.claude}/plugins/cache"
+
+intent_plugins() { # one "<plugin>@<marketplace>" per line
+  jq -r '(.plugins // []) | if type == "array" and all(type == "string" and test("^[^@\\s]+@[^@\\s]+$"))
+    then .[] else error("bad plugins") end' "$INTENT" 2>/dev/null \
+    || die 'Intent key plugins must be an array of "<plugin>@<marketplace>" strings'
+}
+
+enabled_plugins() { # project-scope plugins enabled in .claude/settings.json, one per line
+  [ -f "$PROJECT_SETTINGS" ] || return 0
+  jq -r '(.enabledPlugins // {}) | to_entries[] | select(.value == true) | .key' "$PROJECT_SETTINGS" 2>/dev/null \
+    || die "cannot read $PROJECT_SETTINGS: not valid JSON"
+}
+
+plugin_cached() { # plugin_cached <plugin>@<marketplace>
+  local p="$1"
+  [ -n "$(ls -A "$PLUGIN_CACHE/${p#*@}/${p%@*}" 2>/dev/null)" ]
+}
+
+dropped_plugin_detail() { # dropped_plugin_detail <plugin>
+  echo "$1 enabled in .claude/settings.json but not in the Intent; Apply never uninstalls — remove it by hand (claude plugin uninstall --scope project $1) or add it to the Intent"
+}
+
+# dropped_plugins <wanted> <enabled> — enabled plugins the Intent doesn't list.
+dropped_plugins() {
+  comm -13 <(LC_ALL=C sort -u <<<"$1") <(LC_ALL=C sort -u <<<"$2") | grep -v '^$' || true
+}
+
+converge_plugins() {
+  local wanted enabled p was_enabled failed=0 missing=()
+  wanted="$(intent_plugins)"
+  enabled="$(enabled_plugins)"
+  for p in $wanted; do
+    if grep -Fxq -- "$p" <<<"$enabled" && plugin_cached "$p"; then
+      report skipped plugins "$p already enabled in .claude/settings.json and cached in this environment"
+    else
+      missing+=("$p")
+    fi
+  done
+  if [ "${#missing[@]}" -gt 0 ] && ! command -v claude >/dev/null; then
+    report skipped plugins "claude CLI not on PATH; not installed in this environment: ${missing[*]}"
+    missing=()
+  fi
+  for p in "${missing[@]}"; do
+    was_enabled=0
+    grep -Fxq -- "$p" <<<"$enabled" && was_enabled=1
+    if ! (cd "$TARGET" && claude plugin install --scope project "$p") >/dev/null; then
+      echo "Error: claude plugin install --scope project $p failed" >&2
+      failed=1
+    elif ! enabled_plugins | grep -Fxq -- "$p" || ! plugin_cached "$p"; then
+      echo "Error: claude plugin install --scope project $p left it not enabled in .claude/settings.json or not cached" >&2
+      failed=1
+    elif [ "$was_enabled" -eq 1 ]; then
+      report done plugins "$p cached in this environment (its entry was already in .claude/settings.json); each other environment caches it on its own Apply run"
+    else
+      report done plugins "$p enabled in .claude/settings.json (shared) and cached in this environment; each other environment caches it on its own Apply run"
+    fi
+  done
+  while IFS= read -r p; do
+    [ -n "$p" ] && report skipped plugins "$(dropped_plugin_detail "$p")"
+  done <<<"$(dropped_plugins "$wanted" "$enabled")"
+  [ "$failed" -eq 0 ] || die "plugin install failed (see above)"
+}
+
+check_plugins() {
+  local wanted enabled p detail cli=1
+  wanted="$(intent_plugins)"
+  enabled="$(enabled_plugins)"
+  command -v claude >/dev/null || cli=0
+  for p in $wanted; do
+    if ! grep -Fxq -- "$p" <<<"$enabled"; then
+      detail="$p not enabled in .claude/settings.json"
+    elif ! plugin_cached "$p"; then
+      detail="$p enabled in .claude/settings.json but not cached in this environment"
+    else
+      continue
+    fi
+    if [ "$cli" -eq 1 ]; then
+      drift plugins "$detail"
+    else
+      report drift plugins "$detail; claude CLI not on PATH, so Apply can't install it here"
+      stale=1
+    fi
+  done
+  # Manual removal only: drift, but converging doesn't cure it — no skill suggestion.
+  while IFS= read -r p; do
+    [ -n "$p" ] || continue
+    report drift plugins "$(dropped_plugin_detail "$p")"
+    stale=1
+  done <<<"$(dropped_plugins "$wanted" "$enabled")"
+}
+
 # --- payload (check only) -------------------------------------------------------
 # Recompute the Manifest stamp the way claude-config-install computes it, over the
 # files the Manifest lists. Apply can't cure a mismatch — re-installing does.
-stale=0
 check_payload() {
   local stamp actual
   if [ ! -f "$MANIFEST" ]; then
