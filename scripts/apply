@@ -27,6 +27,26 @@
 #                  "claude plugin install --scope project" (which writes the entry),
 #                  skipping with a reason when the CLI isn't on PATH. Enabled plugins the
 #                  Intent doesn't list are reported for manual removal, never uninstalled.
+#   model          string, default absent — the "model" settings key, written as given
+#                  (an unavailable model falls back silently, so it is never probed);
+#                  absent removes the key.
+#   notifications  boolean, default true — false writes
+#                  preferredNotifChannel: "notifications_disabled"; true removes that key.
+#   permissionMode string, default "default" — permissions.defaultMode policy:
+#                    "default"              removes defaultMode;
+#                    "auto"                 writes defaultMode "auto" unconditionally;
+#                    "auto-if-virtualised"  evaluated at Apply time: writes "auto" when this
+#                                           environment is virtualised; otherwise leaves any
+#                                           existing value untouched (monotone, ADR-0006).
+#   statusline     boolean, default false — true writes a statusLine command that reads the
+#                  statusline's stdin JSON and runs
+#                  <workspace.project_dir>/.claude/scripts/statusline.sh, so no absolute
+#                  path is persisted (ADR-0004); false removes statusLine.
+# Every default but stalenessHook's leaves its settings key out, so "{}" writes only the hook.
+#
+# Owned settings (in .claude/settings.local.json): model, preferredNotifChannel,
+# permissions.defaultMode, statusLine, and the SessionStart entry running the staleness
+# check. Every other key's value, including other hooks, is left as it is.
 set -euo pipefail
 
 usage() {
@@ -87,6 +107,20 @@ intent_bool() {
     else $d end' "$INTENT" 2>/dev/null || die "Intent key $1 must be true or false"
 }
 
+# intent_string <key> <default> — the Intent's non-empty string at top-level <key>
+# (an empty default means "absent" and prints nothing).
+intent_string() {
+  jq -r --arg k "$1" --arg d "$2" '
+    if has($k) then (if (.[$k] | type) == "string" and .[$k] != "" then .[$k] else error("not a string") end)
+    else $d end' "$INTENT" 2>/dev/null || die "Intent key $1 must be a non-empty string"
+}
+
+# settings_get <settings-json> <jq-path> — the value at <jq-path> as compact JSON,
+# or nothing when absent.
+settings_get() {
+  jq -cS "$2 // empty" <<<"$1"
+}
+
 # Settings: Apply owns a fixed set of keys in the untracked settings.local.json;
 # everything else in the file is left as it is. The file is rewritten only when a
 # converge step changes something, so a converged file stays byte-identical.
@@ -106,7 +140,21 @@ settings_write() { # settings_write <json>
 
 # Each concern <c> has converge_<c> (writes, reports done/skipped) and check_<c>
 # (read-only, calls drift). Both read $INTENT. Steps run in order.
-steps=(staleness_hook git_hooks plugins)
+steps=(staleness_hook model notifications permission_mode statusline git_hooks plugins)
+
+# settings_set <jq-path> <json> / settings_del <jq-path> — write or remove one owned
+# key; a parent object the removal empties is dropped too.
+settings_set() {
+  settings_write "$(jq -c --argjson v "$2" "$1 = \$v" <<<"$(settings_json)")"
+}
+
+settings_del() {
+  local parent="${1%.*}" filter="del($1)"
+  [ -n "$parent" ] && filter="$filter | if $parent == {} then del($parent) else . end"
+  settings_write "$(jq -c "$filter" <<<"$(settings_json)")"
+}
+
+json_string() { jq -cn --arg v "$1" '$v'; }
 
 # --- staleness-hook -----------------------------------------------------------
 # Owned entry: the SessionStart hook whose command is exactly HOOK_CMD. The
@@ -386,6 +434,179 @@ check_git_hooks() {
     owned_link "$dest" && drift git-hooks "$name armed but not in Intent"
   done
   return 0
+}
+
+# --- model ----------------------------------------------------------------------
+# Written as the Intent gives it, never probed: an unavailable model falls back silently.
+converge_model() {
+  local want cur
+  want="$(intent_string model "")"
+  cur="$(settings_get "$(settings_json)" .model)"
+  if [ -n "$want" ]; then
+    if [ "$cur" = "$(json_string "$want")" ]; then
+      report skipped model "already $want"
+    else
+      settings_set .model "$(json_string "$want")"
+      report done model "set to $want"
+    fi
+  elif [ -n "$cur" ]; then
+    settings_del .model
+    report done model "removed $cur (absent from Intent)"
+  else
+    report skipped model "absent from Intent"
+  fi
+}
+
+check_model() {
+  local want cur
+  want="$(intent_string model "")"
+  cur="$(settings_get "$(settings_json)" .model)"
+  if [ -n "$want" ] && [ "$cur" != "$(json_string "$want")" ]; then
+    drift model "is ${cur:-unset}, Intent wants $(json_string "$want")"
+  elif [ -z "$want" ] && [ -n "$cur" ]; then
+    drift model "is $cur but absent from Intent"
+  fi
+}
+
+# --- notifications ----------------------------------------------------------------
+NOTIF_OFF='"notifications_disabled"'
+
+converge_notifications() {
+  local on cur
+  on="$(intent_bool notifications true)"
+  cur="$(settings_get "$(settings_json)" .preferredNotifChannel)"
+  if [ "$on" = false ]; then
+    if [ "$cur" = "$NOTIF_OFF" ]; then
+      report skipped notifications "already disabled"
+    else
+      settings_set .preferredNotifChannel "$NOTIF_OFF"
+      report done notifications "disabled (preferredNotifChannel $NOTIF_OFF)"
+    fi
+  elif [ -n "$cur" ]; then
+    settings_del .preferredNotifChannel
+    report done notifications "enabled (preferredNotifChannel $cur removed)"
+  else
+    report skipped notifications "already enabled"
+  fi
+}
+
+check_notifications() {
+  local on cur
+  on="$(intent_bool notifications true)"
+  cur="$(settings_get "$(settings_json)" .preferredNotifChannel)"
+  if [ "$on" = false ] && [ "$cur" != "$NOTIF_OFF" ]; then
+    drift notifications "preferredNotifChannel is ${cur:-unset}, Intent wants $NOTIF_OFF"
+  elif [ "$on" = true ] && [ -n "$cur" ]; then
+    drift notifications "preferredNotifChannel is $cur but Intent leaves notifications on"
+  fi
+}
+
+# --- permission-mode ----------------------------------------------------------------
+# The virtualisation gate (ADR-0006), evaluated here, in this run's environment. It
+# answers only yes or no. systemd-detect-virt is authoritative when installed (it covers
+# VMs and containers alike); the file, env and DMI probes stand in only without it.
+virtualised() {
+  local virt vendor
+  if command -v systemd-detect-virt >/dev/null 2>&1; then
+    virt="$(systemd-detect-virt 2>/dev/null)" && [ -n "$virt" ] && [ "$virt" != none ]
+    return
+  fi
+  [ -e /run/.containerenv ] || [ -e /.dockerenv ] || [ -n "${container:-}" ] && return 0
+  vendor="$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)"
+  grep -Eqi 'qemu|kvm|vmware|virtualbox|xen|microsoft|parallels|bochs' <<<"$vendor"
+}
+
+# permission_want — the defaultMode the policy asks for in this environment: "auto",
+# "" (remove), or "keep" (negative gate: leave whatever is there).
+permission_want() {
+  local policy
+  policy="$(intent_string permissionMode default)"
+  case "$policy" in
+    default) echo "" ;;
+    auto) echo auto ;;
+    auto-if-virtualised) if virtualised; then echo auto; else echo keep; fi ;;
+    *) die "Intent key permissionMode must be default, auto or auto-if-virtualised, not $policy" ;;
+  esac
+}
+
+converge_permission_mode() {
+  local policy want cur
+  policy="$(intent_string permissionMode default)"
+  want="$(permission_want)"
+  cur="$(settings_get "$(settings_json)" .permissions.defaultMode)"
+  case "$want" in
+    auto)
+      if [ "$cur" = '"auto"' ]; then
+        report skipped permission-mode "already auto (Intent policy $policy)"
+      else
+        settings_set .permissions.defaultMode '"auto"'
+        report done permission-mode "defaultMode set to auto (Intent policy $policy)"
+      fi ;;
+    keep)
+      report skipped permission-mode "not virtualised; defaultMode left ${cur:-unset} (Intent policy $policy)" ;;
+    *)
+      if [ -n "$cur" ]; then
+        settings_del .permissions.defaultMode
+        report done permission-mode "defaultMode $cur removed (Intent policy $policy)"
+      else
+        report skipped permission-mode "defaultMode unset (Intent policy $policy)"
+      fi ;;
+  esac
+}
+
+check_permission_mode() {
+  local policy want cur
+  policy="$(intent_string permissionMode default)"
+  want="$(permission_want)"
+  cur="$(settings_get "$(settings_json)" .permissions.defaultMode)"
+  if [ "$want" = auto ] && [ "$cur" != '"auto"' ]; then
+    drift permission-mode "defaultMode is ${cur:-unset}, Intent policy $policy wants \"auto\" here"
+  elif [ -z "$want" ] && [ -n "$cur" ]; then
+    drift permission-mode "defaultMode is $cur but Intent policy is $policy"
+  fi
+}
+
+# --- statusline -------------------------------------------------------------------
+# Resolved at render time from the statusline's documented stdin JSON, so the persisted
+# command holds no absolute path and works on the Host and in a Sandbox alike (ADR-0004).
+STATUS_CMD="$(cat <<'EOF'
+input=$(cat); dir=$(printf '%s' "$input" | jq -r '.workspace.project_dir // empty'); [ -n "$dir" ] && printf '%s' "$input" | bash "$dir/.claude/scripts/statusline.sh"
+EOF
+)"
+STATUS_JSON="$(jq -cnS --arg cmd "$STATUS_CMD" '{type: "command", command: $cmd}')"
+
+converge_statusline() {
+  local on cur
+  on="$(intent_bool statusline false)"
+  cur="$(settings_get "$(settings_json)" .statusLine)"
+  if [ "$on" = true ]; then
+    if [ "$cur" = "$STATUS_JSON" ]; then
+      report skipped statusline "already in place"
+    else
+      settings_set .statusLine "$STATUS_JSON"
+      report done statusline "render-time command for .claude/scripts/statusline.sh set"
+    fi
+  elif [ -n "$cur" ]; then
+    settings_del .statusLine
+    report done statusline "statusLine removed (disabled in Intent)"
+  else
+    report skipped statusline "disabled in Intent"
+  fi
+}
+
+check_statusline() {
+  local on cur
+  on="$(intent_bool statusline false)"
+  cur="$(settings_get "$(settings_json)" .statusLine)"
+  if [ "$on" = true ] && [ "$cur" != "$STATUS_JSON" ]; then
+    if [ -n "$cur" ]; then
+      drift statusline "statusLine differs from the render-time command"
+    else
+      drift statusline "statusLine missing from .claude/settings.local.json"
+    fi
+  elif [ "$on" = false ] && [ -n "$cur" ]; then
+    drift statusline "statusLine present but disabled in Intent"
+  fi
 }
 
 # --- payload (check only) -------------------------------------------------------

@@ -11,11 +11,11 @@ it. Check mode reports drift for each owned key.
 
 **Blocked by:** 03 (check mode, staleness hook, apply skill).
 
-**Status:** ready-for-agent
+**Status:** ready-for-human
 
-- [ ] Each owned key converges from its Intent policy; a key absent from the Intent is removed only if Apply owns it
-- [ ] Keys outside the known set survive convergence byte-for-byte
-- [ ] Virtualisation gate evaluated at Apply time via the stubbed detector; both outcomes tested
-- [ ] Monotone rule tested: a non-virtualised Apply run after a virtualised one preserves the auto permission mode
-- [ ] Statusline command contains no absolute path and resolves the deployed script under mock stdin JSON carrying two different mount paths
-- [ ] Second Apply run is a no-op (idempotency); check mode goes silent once converged
+- [x] Each owned key converges from its Intent policy; a key absent from the Intent is removed only if Apply owns it
+- [x] Keys outside the known set survive convergence byte-for-byte
+- [x] Virtualisation gate evaluated at Apply time via the stubbed detector; both outcomes tested
+- [x] Monotone rule tested: a non-virtualised Apply run after a virtualised one preserves the auto permission mode
+- [x] Statusline command contains no absolute path and resolves the deployed script under mock stdin JSON carrying two different mount paths
+- [x] Second Apply run is a no-op (idempotency); check mode goes silent once converged

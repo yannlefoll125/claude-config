@@ -78,7 +78,7 @@ test_hook_invalid_intent_value_fails() {
 }
 
 FOREIGN='{
-  "model": "opus",
+  "theme": "dark",
   "permissions": {"allow": ["Bash(ls)"]},
   "hooks": {
     "SessionStart": [{"matcher": "startup", "hooks": [{"type": "command", "command": "echo hi"}]}],
