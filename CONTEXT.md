@@ -98,11 +98,13 @@ _Avoid_: editing config, updating config
 
 **Staleness**:
 The state of a Target that lags what it should be: installed copies older than the Config
-Repo's Payload, which only the Manifest's version stamp betrays and only the next Install or
-Push cures; or configuration behind its Intent and installed Payload (settings, hooks,
-plugins, Managed Blocks), which Apply's check mode detects — run at session start by the
-staleness hook — and Apply cures.
-_Avoid_: drift, out of date, unsynced
+Repo's Payload, which nothing in the Target can see (the stamp only betrays copies that
+differ from what their own Manifest records) and only the next Install or Push cures; or
+configuration drifted from its Intent and installed Payload (settings, hooks, plugins,
+Managed Blocks), which Apply's check mode detects — run at session start by the staleness
+hook — and Apply cures. "Drift" is the suite's word for a single detected mismatch, the
+unit Apply reports; Staleness is the Target-level state.
+_Avoid_: out of date, unsynced
 
 **Config Plugin**:
 A prospective future distribution vector, not part of the current design: publishing the

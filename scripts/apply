@@ -551,7 +551,7 @@ virtualised() {
     virt="$(systemd-detect-virt 2>/dev/null)" && [ -n "$virt" ] && [ "$virt" != none ]
     return
   fi
-  [ -e /run/.containerenv ] || [ -e /.dockerenv ] || [ -n "${container:-}" ] && return 0
+  { [ -e /run/.containerenv ] || [ -e /.dockerenv ] || [ -n "${container:-}" ]; } && return 0
   vendor="$(cat /sys/class/dmi/id/sys_vendor 2>/dev/null || true)"
   grep -Eqi 'qemu|kvm|vmware|virtualbox|xen|microsoft|parallels|bochs' <<<"$vendor"
 }
