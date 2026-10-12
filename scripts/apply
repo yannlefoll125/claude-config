@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# Converge this Target to its Intent (.claude/claude-config.json).
+# Usage: .claude/scripts/apply   (from anywhere; the Target is found from this script's location)
+# Report: one stdout line per action, "<done|skipped|drift> <concern>: <detail>".
+# Exit: 0 converged or nothing to do; 1 failure (message on stderr).
+set -euo pipefail
+
+if [ $# -ne 0 ]; then
+  echo "Usage: $0" >&2
+  exit 1
+fi
+
+# Resolved fresh on every run, never persisted: Host and Sandbox mount the
+# Target at different absolute paths (ADR-0009).
+here="$(cd "$(dirname "$0")" && pwd)"
+if [ "$(basename "$here")" != scripts ] || [ "$(basename "$(dirname "$here")")" != .claude ]; then
+  echo "Error: run Apply from a Target's .claude/scripts/, not $here" >&2
+  exit 1
+fi
+TARGET="$(cd "$here/../.." && pwd)"
+INTENT="$TARGET/.claude/claude-config.json"
+
+report() { # report <done|skipped|drift> <concern> <detail>
+  printf '%s %s: %s\n' "$1" "$2" "$3"
+}
+
+die() {
+  echo "Error: $*" >&2
+  exit 1
+}
+
+# Convergence steps, run in order; each name <c> is a function converge_<c>
+# that reads $INTENT and reports one line per action.
+steps=()
+
+if [ ! -f "$INTENT" ]; then
+  report skipped intent "no .claude/claude-config.json; run /setup-claude-config to create it"
+  exit 0
+fi
+
+command -v jq >/dev/null || die "jq is required"
+jq -e 'type == "object"' "$INTENT" >/dev/null 2>&1 \
+  || die "cannot read Intent $INTENT: not a JSON object (or jq failed)"
+
+for step in ${steps[@]+"${steps[@]}"}; do
+  "converge_$step"
+done

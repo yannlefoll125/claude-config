@@ -1,5 +1,6 @@
-# claude-config ec4da6f30798
+# claude-config 5bb265b5bed4
 output-styles/eli5.md
+scripts/apply
 scripts/git-hooks/commit-msg
 scripts/git-hooks/enable
 scripts/statusline.sh

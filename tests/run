@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+# Run the CLI-seam test suite: every tests/*.sh except helpers.sh.
+# Usage: tests/run [name-filter]   (runs only test_* functions matching the filter)
+# Each test_* function runs in its own subshell with a fresh scratch dir; see helpers.sh.
+set -euo pipefail
+
+TESTS_DIR="$(cd "$(dirname "$0")" && pwd)"
+REPO="$(cd "$TESTS_DIR/.." && pwd)"
+export TESTS_DIR REPO
+filter="${1:-}"
+
+pass=0
+fail=0
+for file in "$TESTS_DIR"/*.sh; do
+  [ "$(basename "$file")" = helpers.sh ] && continue
+  names="$(bash -c 'source "$1"; declare -F | awk "\$3 ~ /^test_/ {print \$3}"' _ "$file")"
+  for name in $names; do
+    case "$name" in *"$filter"*) ;; *) continue ;; esac
+    log="$(mktemp)"
+    if (
+      set -euo pipefail
+      source "$TESTS_DIR/helpers.sh"
+      source "$file"
+      setup_test
+      trap teardown_test EXIT
+      "$name"
+    ) >"$log" 2>&1; then
+      pass=$((pass + 1))
+      echo "ok   $(basename "$file" .sh) $name"
+    else
+      fail=$((fail + 1))
+      echo "FAIL $(basename "$file" .sh) $name"
+      sed 's/^/     | /' "$log"
+    fi
+    rm -f "$log"
+  done
+done
+
+echo "$pass passed, $fail failed"
+[ "$fail" -eq 0 ]

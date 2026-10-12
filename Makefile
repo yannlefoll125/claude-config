@@ -1,6 +1,6 @@
 BINDIR ?= $(HOME)/.local/bin
 
-.PHONY: install uninstall
+.PHONY: install uninstall test
 
 install:
 	mkdir -p $(BINDIR)
@@ -11,3 +11,6 @@ install:
 
 uninstall:
 	rm -f $(BINDIR)/claude-config-install $(BINDIR)/claude-config-push
+
+test:
+	tests/run
